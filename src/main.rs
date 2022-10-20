@@ -6,8 +6,9 @@ const PADDLE_DISTANCE_FACTOR: f32 = 0.4;
 const BALL_DIAMETER: f32 = 32.;
 const SCREEN_HEIGHT: f32 = 720.;
 const SCREEN_WIDTH: f32 = 480.;
-const TIME_STEP: f64 = 0.0001;
-const BALL_TRANSLATION_PER_STEP: f32 = 0.025;
+const TIME_STEP: f64 = 0.01;
+const BALL_TRANSLATION_PER_STEP: f32 = 2.5;
+const BALL_DEFECTION_FACTOR : f32 = 10.;
 
 const PADDLE_DIMENSIONS: Vec2 = Vec2 {
     x: 128.,
@@ -25,10 +26,10 @@ fn main() {
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
+                .with_system(paddle_move_system)
                 .with_system(check_bounds)
-                .with_system(ball_velocity),
+                .with_system(ball_velocity.before(check_bounds)),
         )
-        .add_system(paddle_move_system)
         .run();
 }
 
@@ -41,7 +42,6 @@ fn setup(
     commands
         .spawn()
         .insert(Paddle)
-        .insert(Collider)
         .insert_bundle(MaterialMesh2dBundle {
             mesh: meshes
                 .add(Mesh::from(shape::Quad {
@@ -63,6 +63,7 @@ fn setup(
         .insert(BallVelocity {
             direction: -1.,
             speed: BALL_TRANSLATION_PER_STEP,
+            angle: 0.,
         })
         .insert_bundle(MaterialMesh2dBundle {
             mesh: meshes.add(Mesh::from(shape::Circle::default())).into(),
@@ -90,13 +91,14 @@ struct Collider;
 struct BallVelocity {
     direction: f32,
     speed: f32,
+    angle: f32,
 }
 
 fn check_bounds(
-    mut commands: Commands,
     mut set: ParamSet<(
-        Query<(&mut Transform, Entity), With<Ball>>,
+        Query<&mut Transform, With<Ball>>,
         Query<&Transform, With<Collider>>,
+        Query<&mut BallVelocity>,
     )>,
 ) {
     let paddle = set.p1();
@@ -104,26 +106,30 @@ fn check_bounds(
     let paddle_position = paddle_transform.translation;
 
     let mut ball = set.p0();
-    let (mut transform, entity) = ball.single_mut();
-    let (x_position, y_position) = (transform.translation.x, transform.translation.y);
+    let transform = ball.single_mut();
+    let (ball_x, ball_y) = (transform.translation.x, transform.translation.y);
     let collide = collide(
         transform.translation,
         Vec2::splat(BALL_DIAMETER),
         paddle_position,
         PADDLE_DIMENSIONS,
     );
+    let mut velocity = set.p2();
+    let mut velocity = velocity.single_mut();
     if collide.is_some() {
-        transform.translation.y = HIGHER_PADDLE_Y_AXIS;
-    } else if HIGHER_PADDLE_Y_AXIS < f32::abs(y_position) {
-        commands.entity(entity).despawn();
+        let (paddle_x, paddle_y) = (paddle_position.x, paddle_position.y);
+        velocity.speed *= 1.2;
+        velocity.direction *= -1.;
+        velocity.angle = Vec2::new(paddle_x, paddle_y).angle_between(Vec2::new(ball_x, ball_y)) * BALL_DEFECTION_FACTOR;
     }
-    if SCREEN_WIDTH < f32::abs(x_position) / 2. {
+    if SCREEN_WIDTH < f32::abs(ball_x) / 2. {
         todo!();
     }
 }
 
 fn ball_velocity(mut ball_query: Query<(&mut Transform, &BallVelocity)>) {
     for (mut transform, velocity) in &mut ball_query {
+        transform.translation.x += velocity.angle;
         transform.translation.y += velocity.speed * velocity.direction;
     }
 }
