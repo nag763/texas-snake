@@ -8,7 +8,8 @@ const SCREEN_HEIGHT: f32 = 720.;
 const SCREEN_WIDTH: f32 = 480.;
 const TIME_STEP: f64 = 0.01;
 const BALL_TRANSLATION_PER_STEP: f32 = 2.5;
-const BALL_DEFECTION_FACTOR: f32 = 10.;
+const BALL_DEFECTION_FACTOR: f32 = 40.;
+const BORDER_SPLAT_SIZE : f32 = 1.0f32;
 
 const PADDLE_DIMENSIONS: Vec2 = Vec2 {
     x: 128.,
@@ -27,7 +28,8 @@ fn main() {
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
                 .with_system(check_bounds)
-                .with_system(paddle_move_system.before(check_bounds))
+                .with_system(lower_paddle_move_system.before(check_bounds))
+                .with_system(higher_paddle_move_system.before(check_bounds))
                 .with_system(ball_velocity.before(check_bounds)),
         )
         .run();
@@ -41,7 +43,7 @@ fn setup(
     commands.spawn_bundle(Camera2dBundle::default());
     commands
         .spawn()
-        .insert(Paddle)
+        .insert(LowerPaddle)
         .insert_bundle(MaterialMesh2dBundle {
             mesh: meshes
                 .add(Mesh::from(shape::Quad {
@@ -51,6 +53,24 @@ fn setup(
                 .into(),
             transform: Transform::default().with_translation(Vec3 {
                 y: LOWER_PADDLE_Y_AXIS,
+                ..Vec3::default()
+            }),
+            material: materials.add(ColorMaterial::from(Color::WHITE)),
+            ..default()
+        })
+        .insert(Collider);
+    commands
+        .spawn()
+        .insert(HigherPaddle)
+        .insert_bundle(MaterialMesh2dBundle {
+            mesh: meshes
+                .add(Mesh::from(shape::Quad {
+                    size: PADDLE_DIMENSIONS,
+                    flip: true,
+                }))
+                .into(),
+            transform: Transform::default().with_translation(Vec3 {
+                y: HIGHER_PADDLE_Y_AXIS,
                 ..Vec3::default()
             }),
             material: materials.add(ColorMaterial::from(Color::WHITE)),
@@ -76,13 +96,10 @@ fn setup(
             .spawn()
             .insert(Border)
             .insert_bundle(SpriteBundle {
-                sprite: Sprite {
-                    color: Color::RED,
-                    ..default()
-                },
+                sprite: Sprite::default(),
                 transform: Transform {
                     translation: Vec3::new(x, y, 0.),
-                    scale: Vec3::splat(0.0001),
+                    scale: Vec3::splat(BORDER_SPLAT_SIZE),
                     ..default()
                 },
                 ..default()
@@ -101,7 +118,10 @@ fn window_resize_system(mut windows: ResMut<Windows>) {
 }
 
 #[derive(Component)]
-struct Paddle;
+struct LowerPaddle;
+
+#[derive(Component)]
+struct HigherPaddle;
 
 #[derive(Component)]
 struct Ball;
@@ -121,30 +141,34 @@ struct BallVelocity {
 
 fn check_bounds(
     mut ball: Query<(&Transform, &mut BallVelocity), With<Ball>>,
-    collider: Query<&Transform, With<Collider>>,
+    collider: Query<(&Transform, Option<&Border>), With<Collider>>,
 ) {
     let (transform, mut velocity) = ball.single_mut();
     let (ball_x, ball_y) = (transform.translation.x, transform.translation.y);
 
-    for collider_transform in collider.iter() {
+    for (collider_transform, maybe_border) in collider.iter() {
         let paddle_position = collider_transform.translation;
+
+        let dimensions = match maybe_border {
+            Some(_) => Vec2::splat(BORDER_SPLAT_SIZE),
+            None => PADDLE_DIMENSIONS
+        };
 
         let collide = collide(
             transform.translation,
             Vec2::splat(BALL_DIAMETER),
             paddle_position,
-            PADDLE_DIMENSIONS,
+            dimensions
         );
         if collide.is_some() {
             let (paddle_x, paddle_y) = (paddle_position.x, paddle_position.y);
-            velocity.speed *= 1.2;
-            velocity.direction *= -1.;
-            velocity.angle = Vec2::new(paddle_x, paddle_y).angle_between(Vec2::new(ball_x, ball_y))
-                * BALL_DEFECTION_FACTOR;
-            dbg!(velocity.angle);
-        }
-        if SCREEN_WIDTH < f32::abs(ball_x) / 2. {
-            todo!();
+            if maybe_border.is_none() {
+                velocity.direction *= -1.;
+                velocity.speed *= 1.1;
+                velocity.angle = Vec2::new(paddle_x, paddle_y).angle_between(Vec2::new(ball_x, ball_y)) * BALL_DEFECTION_FACTOR;
+            } else {
+                velocity.angle*=-1.;
+            }   
         }
     }
 }
@@ -156,9 +180,9 @@ fn ball_velocity(mut ball_query: Query<(&mut Transform, &BallVelocity)>) {
     }
 }
 
-fn paddle_move_system(
+fn lower_paddle_move_system(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Transform, With<Paddle>>,
+    mut query: Query<&mut Transform, With<LowerPaddle>>,
 ) {
     let mut paddle_transform = query.single_mut();
     let mut new_x_paddle = paddle_transform.translation.x;
@@ -166,6 +190,23 @@ fn paddle_move_system(
         new_x_paddle += 1.0 * PADDLE_SPEED_FACTOR;
     }
     if keyboard_input.pressed(KeyCode::Left) {
+        new_x_paddle -= 1.0 * PADDLE_SPEED_FACTOR;
+    }
+    if f32::abs(new_x_paddle) < (SCREEN_WIDTH - PADDLE_DIMENSIONS.x) / 2. {
+        paddle_transform.translation.x = new_x_paddle;
+    }
+}
+
+fn higher_paddle_move_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<&mut Transform, With<HigherPaddle>>,
+) {
+    let mut paddle_transform = query.single_mut();
+    let mut new_x_paddle = paddle_transform.translation.x;
+    if keyboard_input.pressed(KeyCode::D) {
+        new_x_paddle += 1.0 * PADDLE_SPEED_FACTOR;
+    }
+    if keyboard_input.pressed(KeyCode::Q) {
         new_x_paddle -= 1.0 * PADDLE_SPEED_FACTOR;
     }
     if f32::abs(new_x_paddle) < (SCREEN_WIDTH - PADDLE_DIMENSIONS.x) / 2. {
