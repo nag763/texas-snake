@@ -22,6 +22,8 @@ const FONT_PADDING : Val = Val::Px(5.);
 const SPEED_INCREASE_ON_TOUCH : f32 = 1.1;
 
 fn main() {
+    let low_paddle_system = create_paddle_move_system::<LowerPaddle>(KeyCode::Left, KeyCode::Right);
+    let upper_paddle_system = create_paddle_move_system::<HigherPaddle>(KeyCode::Q, KeyCode::D);
     App::new()
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(ScoreSheet::default())
@@ -33,8 +35,8 @@ fn main() {
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
                 .with_system(check_bounds)
-                .with_system(lower_paddle_move_system.before(check_bounds))
-                .with_system(higher_paddle_move_system.before(check_bounds))
+                .with_system(low_paddle_system.before(check_bounds))
+                .with_system(upper_paddle_system.before(check_bounds))
                 .with_system(ball_velocity.before(check_bounds))
                 .with_system(out_of_bounds_event.before(check_bounds)),
         )
@@ -244,38 +246,22 @@ fn ball_velocity(mut ball_query: Query<(&mut Transform, &BallVelocity)>) {
     }
 }
 
-fn lower_paddle_move_system(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Transform, With<LowerPaddle>>,
-) {
+fn create_paddle_move_system<T:Component>(left: KeyCode, right: KeyCode) -> impl Fn(Res<Input<KeyCode>>, Query<&mut Transform, With<T>>) {
+    let paddle_move_system = move |                                                                                   keyboard_input: Res<Input<KeyCode>>,                                            mut query: Query<&mut Transform, With<T>>, 
+| {
     let mut paddle_transform = query.single_mut();
     let mut new_x_paddle = paddle_transform.translation.x;
-    if keyboard_input.pressed(KeyCode::Right) {
+    if keyboard_input.pressed(right) {
         new_x_paddle += 1.0 * PADDLE_SPEED_FACTOR;
     }
-    if keyboard_input.pressed(KeyCode::Left) {
+    if keyboard_input.pressed(left) {
         new_x_paddle -= 1.0 * PADDLE_SPEED_FACTOR;
     }
     if f32::abs(new_x_paddle) < (SCREEN_WIDTH - PADDLE_DIMENSIONS.x) / 2. {
         paddle_transform.translation.x = new_x_paddle;
     }
-}
-
-fn higher_paddle_move_system(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Transform, With<HigherPaddle>>,
-) {
-    let mut paddle_transform = query.single_mut();
-    let mut new_x_paddle = paddle_transform.translation.x;
-    if keyboard_input.pressed(KeyCode::D) {
-        new_x_paddle += 1.0 * PADDLE_SPEED_FACTOR;
-    }
-    if keyboard_input.pressed(KeyCode::Q) {
-        new_x_paddle -= 1.0 * PADDLE_SPEED_FACTOR;
-    }
-    if f32::abs(new_x_paddle) < (SCREEN_WIDTH - PADDLE_DIMENSIONS.x) / 2. {
-        paddle_transform.translation.x = new_x_paddle;
-    }
+    };
+    return paddle_move_system;
 }
 
 fn update_scoresheet(scoresheet: Res<ScoreSheet>, mut query: Query<&mut Text>) {
