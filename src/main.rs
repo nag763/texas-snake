@@ -17,6 +17,9 @@ const PADDLE_DIMENSIONS: Vec2 = Vec2 {
 };
 const HIGHER_PADDLE_Y_AXIS: f32 = SCREEN_HEIGHT * PADDLE_DISTANCE_FACTOR;
 const LOWER_PADDLE_Y_AXIS: f32 = -HIGHER_PADDLE_Y_AXIS;
+const FONT_SIZE : f32 = 15f32;
+const FONT_PADDING : Val = Val::Px(5.);
+const SPEED_INCREASE_ON_TOUCH : f32 = 1.1;
 
 fn main() {
     App::new()
@@ -50,7 +53,7 @@ fn setup(
         TextBundle::from_sections([
             TextSection::from_style(
                 TextStyle {
-                    font_size: 25.,
+                    font_size: FONT_SIZE,
                     color:Color::BLUE,
                     font: asset_server.load("score_font.otf"),
                     ..default()
@@ -59,8 +62,8 @@ fn setup(
                 Style {
                     position_type: PositionType::Absolute,
                     position: UiRect {
-                        top: Val::Px(5f32),
-                        left: Val::Px(5f32),
+                        top: FONT_PADDING,
+                        left: FONT_PADDING,
                         ..default()
                     },
                     ..default()
@@ -70,7 +73,7 @@ fn setup(
         TextBundle::from_sections([
             TextSection::from_style(
                 TextStyle {
-                    font_size: 25.,
+                    font_size: FONT_SIZE,
                     color:Color::RED,
                     font: asset_server.load("score_font.otf"),
                     ..default()
@@ -79,8 +82,8 @@ fn setup(
                 Style {
                     position_type: PositionType::Absolute,
                     position: UiRect {
-                        bottom: Val::Px(5f32),
-                        right: Val::Px(5f32),
+                        bottom: FONT_PADDING,
+                        right: FONT_PADDING,
                         ..default()
                     },
                     ..default()
@@ -220,7 +223,7 @@ fn check_bounds(
             let (paddle_x, paddle_y) = (paddle_position.x, paddle_position.y);
             if maybe_border.is_none() {
                 velocity.direction *= -1.;
-                velocity.speed *= 1.1;
+                velocity.speed *= SPEED_INCREASE_ON_TOUCH;
                 velocity.angle = Vec2::new(paddle_x, paddle_y)
                     .angle_between(Vec2::new(ball_x, ball_y))
                     * BALL_DEFECTION_FACTOR;
