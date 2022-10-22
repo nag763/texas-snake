@@ -17,9 +17,9 @@ const PADDLE_DIMENSIONS: Vec2 = Vec2 {
 };
 const HIGHER_PADDLE_Y_AXIS: f32 = SCREEN_HEIGHT * PADDLE_DISTANCE_FACTOR;
 const LOWER_PADDLE_Y_AXIS: f32 = -HIGHER_PADDLE_Y_AXIS;
-const FONT_SIZE : f32 = 15f32;
-const FONT_PADDING : Val = Val::Px(5.);
-const SPEED_INCREASE_ON_TOUCH : f32 = 1.1;
+const FONT_SIZE: f32 = 15f32;
+const FONT_PADDING: Val = Val::Px(5.);
+const SPEED_INCREASE_ON_TOUCH: f32 = 1.1;
 
 fn main() {
     let low_paddle_system = create_paddle_move_system::<LowerPaddle>(KeyCode::Left, KeyCode::Right);
@@ -48,49 +48,41 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
 ) {
     commands.spawn_bundle(Camera2dBundle::default());
     commands.spawn_bundle(
-        TextBundle::from_sections([
-            TextSection::from_style(
-                TextStyle {
-                    font_size: FONT_SIZE,
-                    color:Color::BLUE,
-                    font: asset_server.load("score_font.otf"),
-                    ..default()
-                },
-            )]).with_style(
-                Style {
-                    position_type: PositionType::Absolute,
-                    position: UiRect {
-                        top: FONT_PADDING,
-                        left: FONT_PADDING,
-                        ..default()
-                    },
-                    ..default()
-                }),
-        );
+        TextBundle::from_sections([TextSection::from_style(TextStyle {
+            font_size: FONT_SIZE,
+            color: Color::BLUE,
+            font: asset_server.load("score_font.otf"),
+        })])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                top: FONT_PADDING,
+                left: FONT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+    );
     commands.spawn_bundle(
-        TextBundle::from_sections([
-            TextSection::from_style(
-                TextStyle {
-                    font_size: FONT_SIZE,
-                    color:Color::RED,
-                    font: asset_server.load("score_font.otf"),
-                    ..default()
-                },
-            )]).with_style(
-                Style {
-                    position_type: PositionType::Absolute,
-                    position: UiRect {
-                        bottom: FONT_PADDING,
-                        right: FONT_PADDING,
-                        ..default()
-                    },
-                    ..default()
-                }),
-        );
+        TextBundle::from_sections([TextSection::from_style(TextStyle {
+            font_size: FONT_SIZE,
+            color: Color::RED,
+            font: asset_server.load("score_font.otf"),
+        })])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                bottom: FONT_PADDING,
+                right: FONT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+    );
     commands
         .spawn()
         .insert(LowerPaddle)
@@ -202,7 +194,7 @@ struct BallVelocity {
 fn check_bounds(
     mut ball: Query<(&Transform, &mut BallVelocity), With<Ball>>,
     collider: Query<(&Transform, Option<&Border>), With<Collider>>,
-    mut oob_event_writer : EventWriter<OutOfBoundsEvent>,
+    mut oob_event_writer: EventWriter<OutOfBoundsEvent>,
 ) {
     let (transform, mut velocity) = ball.single_mut();
     let (ball_x, ball_y) = (transform.translation.x, transform.translation.y);
@@ -234,7 +226,7 @@ fn check_bounds(
             }
         }
     }
-    if SCREEN_HEIGHT/2. < f32::abs(ball_y)  {
+    if SCREEN_HEIGHT / 2. < f32::abs(ball_y) {
         oob_event_writer.send_default();
     }
 }
@@ -246,22 +238,23 @@ fn ball_velocity(mut ball_query: Query<(&mut Transform, &BallVelocity)>) {
     }
 }
 
-fn create_paddle_move_system<T:Component>(left: KeyCode, right: KeyCode) -> impl Fn(Res<Input<KeyCode>>, Query<&mut Transform, With<T>>) {
-    let paddle_move_system = move |                                                                                   keyboard_input: Res<Input<KeyCode>>,                                            mut query: Query<&mut Transform, With<T>>, 
-| {
-    let mut paddle_transform = query.single_mut();
-    let mut new_x_paddle = paddle_transform.translation.x;
-    if keyboard_input.pressed(right) {
-        new_x_paddle += 1.0 * PADDLE_SPEED_FACTOR;
+fn create_paddle_move_system<T: Component>(
+    left: KeyCode,
+    right: KeyCode,
+) -> impl Fn(Res<Input<KeyCode>>, Query<&mut Transform, With<T>>) {
+    move |keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Transform, With<T>>| {
+        let mut paddle_transform = query.single_mut();
+        let mut new_x_paddle = paddle_transform.translation.x;
+        if keyboard_input.pressed(right) {
+            new_x_paddle += 1.0 * PADDLE_SPEED_FACTOR;
+        }
+        if keyboard_input.pressed(left) {
+            new_x_paddle -= 1.0 * PADDLE_SPEED_FACTOR;
+        }
+        if f32::abs(new_x_paddle) < (SCREEN_WIDTH - PADDLE_DIMENSIONS.x) / 2. {
+            paddle_transform.translation.x = new_x_paddle;
+        }
     }
-    if keyboard_input.pressed(left) {
-        new_x_paddle -= 1.0 * PADDLE_SPEED_FACTOR;
-    }
-    if f32::abs(new_x_paddle) < (SCREEN_WIDTH - PADDLE_DIMENSIONS.x) / 2. {
-        paddle_transform.translation.x = new_x_paddle;
-    }
-    };
-    return paddle_move_system;
 }
 
 fn update_scoresheet(scoresheet: Res<ScoreSheet>, mut query: Query<&mut Text>) {
@@ -275,10 +268,10 @@ fn update_scoresheet(scoresheet: Res<ScoreSheet>, mut query: Query<&mut Text>) {
 }
 
 fn out_of_bounds_event(
-        oob_events: EventReader<OutOfBoundsEvent>,
-        mut ball_query: Query<(&mut Transform, &mut BallVelocity), With<Ball>>,
-        mut scoresheet : ResMut<ScoreSheet>,
-    ) {
+    oob_events: EventReader<OutOfBoundsEvent>,
+    mut ball_query: Query<(&mut Transform, &mut BallVelocity), With<Ball>>,
+    mut scoresheet: ResMut<ScoreSheet>,
+) {
     if !oob_events.is_empty() {
         oob_events.clear();
         let (mut transform, mut velocity) = ball_query.single_mut();
@@ -291,5 +284,4 @@ fn out_of_bounds_event(
         velocity.angle = 0.;
         velocity.speed = BALL_TRANSLATION_PER_STEP;
     }
-    
 }
