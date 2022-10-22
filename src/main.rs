@@ -200,7 +200,7 @@ fn check_bounds(
     let (ball_x, ball_y) = (transform.translation.x, transform.translation.y);
 
     for (collider_transform, maybe_border) in collider.iter() {
-        let paddle_position = collider_transform.translation;
+        let collider_position = collider_transform.translation;
 
         let dimensions = match maybe_border {
             Some(_) => Vec2::splat(BORDER_SPLAT_SIZE),
@@ -210,15 +210,15 @@ fn check_bounds(
         let collide = collide(
             transform.translation,
             Vec2::splat(BALL_DIAMETER),
-            paddle_position,
+            collider_position,
             dimensions,
         );
         if collide.is_some() {
-            let (paddle_x, paddle_y) = (paddle_position.x, paddle_position.y);
+            let (collider_x, collider_y) = (collider_position.x, collider_position.y);
             if maybe_border.is_none() {
                 velocity.direction *= -1.;
                 velocity.speed *= SPEED_INCREASE_ON_TOUCH;
-                velocity.angle = Vec2::new(paddle_x, paddle_y)
+                velocity.angle = Vec2::new(collider_x, collider_y)
                     .angle_between(Vec2::new(ball_x, ball_y))
                     * BALL_DEFECTION_FACTOR;
             } else {
@@ -259,11 +259,12 @@ fn create_paddle_move_system<T: Component>(
 
 fn update_scoresheet(scoresheet: Res<ScoreSheet>, mut query: Query<&mut Text>) {
     for (i, mut text) in query.iter_mut().enumerate() {
-        if i == 0 {
-            text.sections[0].value = scoresheet.blue.to_string();
-        } else if i == 1 {
-            text.sections[0].value = scoresheet.red.to_string();
-        }
+        let text_val = match i {
+            0 => scoresheet.blue,
+            1 => scoresheet.red,
+            _ => continue,
+        }.to_string();
+        text.sections[0].value = text_val;
     }
 }
 
@@ -280,7 +281,7 @@ fn out_of_bounds_event(
         } else {
             scoresheet.red += 1;
         }
-        (transform.translation.x, transform.translation.y) = (0., 0.);
+        transform.translation = Vec3::default();
         velocity.angle = 0.;
         velocity.speed = BALL_TRANSLATION_PER_STEP;
     }
