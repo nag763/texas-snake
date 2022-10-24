@@ -7,6 +7,10 @@ const SCREEN_HEIGHT: f32 = 480.;
 /// The screen width.
 const SCREEN_WIDTH: f32 = 640.;
 
+const SNAKE_SIZE : Vec2 = Vec2::splat(10.);
+
+const BORDER_SIZE : Vec2 = Vec2::splat(1.);
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum SnakeDirection {
     Up,
@@ -45,17 +49,20 @@ struct Snake {
     direction: Option<SnakeDirection>,
 }
 
+#[derive(Debug, Default, Component)]
+struct Border;
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(window_resize_system)
-        .add_system(change_snake_direction)
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
-                .with_system(move_snake)
+                .with_system(change_snake_direction)
+                .with_system(move_snake.before(change_snake_direction))
         )
         .run();
 }
@@ -73,14 +80,44 @@ fn setup(
         .insert_bundle(MaterialMesh2dBundle {
             mesh: meshes
                 .add(Mesh::from(shape::Quad {
-                    size: Vec2::new(10., 10.),
+                    size: SNAKE_SIZE,
                     ..default()
                 }))
                 .into(),
             transform: Transform::default(),
-            material: materials.add(ColorMaterial::from(Color::GRAY)),
+            material: materials.add(ColorMaterial::from(Color::WHITE)),
             ..default()
         });
+
+    let mut border_maker_closure = |x: f32, y:f32| {
+        commands
+        .spawn()
+        .insert(Border::default())
+        .insert_bundle(MaterialMesh2dBundle {
+            mesh: meshes
+                .add(Mesh::from(shape::Quad {
+                    size: BORDER_SIZE,
+                    ..default()
+                }))
+                .into(),
+            transform: Transform::default().with_translation(Vec3::new(x, y, 0f32)),
+            material: materials.add(ColorMaterial::from(Color::GRAY)),
+            ..default()
+        }); 
+    };
+
+    let (max_screen_height, max_screen_width) : (i32, i32) = ((SCREEN_HEIGHT/2f32).floor() as i32, (SCREEN_WIDTH/2f32).floor() as i32);
+    let (min_screen_height, min_screen_width) : (i32, i32) = (-max_screen_height, -max_screen_width);
+
+    for x in min_screen_width..max_screen_width {
+        border_maker_closure(x as f32, min_screen_height as f32);
+        border_maker_closure(x as f32, max_screen_height as f32);
+    }
+
+    for y in min_screen_height..max_screen_height {
+        border_maker_closure(min_screen_width as f32, y as f32);
+        border_maker_closure(max_screen_width as f32, y as f32);
+    }
 }
 
 /// Resizes the window at startup.
@@ -89,7 +126,7 @@ fn window_resize_system(mut windows: ResMut<Windows>) {
     window.set_resolution(SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
-/// The movement of ball per TIME_STEP applied to the ball.
+/// The movement of snake per TIME_STEP applied to the ball.
 fn move_snake(mut query: Query<(&mut Transform, &Snake)>) {
     let (mut transform, snake) = query.single_mut();
     if let Some(direction) = snake.direction {
