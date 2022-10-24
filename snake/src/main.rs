@@ -1,4 +1,6 @@
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle, time::FixedTimestep};
+use bevy::{
+    prelude::*, sprite::collide_aabb::collide, sprite::MaterialMesh2dBundle, time::FixedTimestep, app::AppExit,
+};
 
 /// How many times per seconds the system does an action.
 const TIME_STEP: f64 = 0.01;
@@ -7,9 +9,9 @@ const SCREEN_HEIGHT: f32 = 480.;
 /// The screen width.
 const SCREEN_WIDTH: f32 = 640.;
 
-const SNAKE_SIZE : Vec2 = Vec2::splat(10.);
+const SNAKE_SIZE: Vec2 = Vec2::splat(10.);
 
-const BORDER_SIZE : Vec2 = Vec2::splat(1.);
+const BORDER_SIZE: Vec2 = Vec2::splat(1.);
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum SnakeDirection {
@@ -52,18 +54,27 @@ struct Snake {
 #[derive(Debug, Default, Component)]
 struct Border;
 
+#[derive(Debug, Default, Component)]
+struct Collider;
+
+#[derive(Default)]
+struct CollisionEvent;
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::BLACK))
         .add_plugins(DefaultPlugins)
+        .add_event::<CollisionEvent>()
         .add_startup_system(setup)
         .add_system(window_resize_system)
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
                 .with_system(change_snake_direction)
-                .with_system(move_snake.before(change_snake_direction))
+                .with_system(check_collisions)
+                .with_system(move_snake.before(change_snake_direction)),
         )
+        .add_system(game_over)
         .run();
 }
 
@@ -89,25 +100,29 @@ fn setup(
             ..default()
         });
 
-    let mut border_maker_closure = |x: f32, y:f32| {
+    let mut border_maker_closure = |x: f32, y: f32| {
         commands
-        .spawn()
-        .insert(Border::default())
-        .insert_bundle(MaterialMesh2dBundle {
-            mesh: meshes
-                .add(Mesh::from(shape::Quad {
-                    size: BORDER_SIZE,
-                    ..default()
-                }))
-                .into(),
-            transform: Transform::default().with_translation(Vec3::new(x, y, 0f32)),
-            material: materials.add(ColorMaterial::from(Color::GRAY)),
-            ..default()
-        }); 
+            .spawn()
+            .insert(Border::default())
+            .insert_bundle(MaterialMesh2dBundle {
+                mesh: meshes
+                    .add(Mesh::from(shape::Quad {
+                        size: BORDER_SIZE,
+                        ..default()
+                    }))
+                    .into(),
+                transform: Transform::default().with_translation(Vec3::new(x, y, 0f32)),
+                material: materials.add(ColorMaterial::from(Color::GRAY)),
+                ..default()
+            })
+            .insert(Collider);
     };
 
-    let (max_screen_height, max_screen_width) : (i32, i32) = ((SCREEN_HEIGHT/2f32).floor() as i32, (SCREEN_WIDTH/2f32).floor() as i32);
-    let (min_screen_height, min_screen_width) : (i32, i32) = (-max_screen_height, -max_screen_width);
+    let (max_screen_height, max_screen_width): (i32, i32) = (
+        (SCREEN_HEIGHT / 2f32).floor() as i32,
+        (SCREEN_WIDTH / 2f32).floor() as i32,
+    );
+    let (min_screen_height, min_screen_width): (i32, i32) = (-max_screen_height, -max_screen_width);
 
     for x in min_screen_width..max_screen_width {
         border_maker_closure(x as f32, min_screen_height as f32);
@@ -130,9 +145,37 @@ fn window_resize_system(mut windows: ResMut<Windows>) {
 fn move_snake(mut query: Query<(&mut Transform, &Snake)>) {
     let (mut transform, snake) = query.single_mut();
     if let Some(direction) = snake.direction {
-        let new_translation = direction.into_translation();
-        transform.translation += new_translation;
+        let translation_diff = direction.into_translation();
+        transform.translation += translation_diff;
+    }
+}
 
+fn check_collisions(
+    snake: Query<&Transform, With<Snake>>,
+    colliders: Query<&Transform, With<Collider>>,
+    mut collision_event_writer: EventWriter<CollisionEvent>
+) {
+    let snake_position = snake.single().translation;
+    for collider in colliders.iter() {
+        let collide = collide(
+            snake_position,
+            SNAKE_SIZE,
+            collider.translation,
+            BORDER_SIZE,
+        );
+        if collide.is_some() {
+            collision_event_writer.send_default();
+        }
+    }
+}
+
+fn game_over(
+    mut exit: EventWriter<AppExit>,
+    collision_event_reader: EventReader<CollisionEvent>
+) {
+    if !collision_event_reader.is_empty() {
+        exit.send(AppExit);
+        collision_event_reader.clear();
     }
 }
 
