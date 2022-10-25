@@ -20,6 +20,9 @@ const MIN_SCREEN_WIDTH: f32 = -MAX_SCREEN_WIDTH;
 
 const SNAKE_SIZE: f32 = 10f32;
 const SNAKE_DIMENSIONS: Vec2 = Vec2::splat(SNAKE_SIZE);
+const SNAKE_SPEED_FACTOR: f32 = 3f32;
+
+const SNAKE_QUEUE_DIST: f32 = 3f32;
 
 const BORDER_SIZE: f32 = 10f32;
 const BORDER_DIMENSIONS: Vec2 = Vec2::splat(BORDER_SIZE);
@@ -62,7 +65,11 @@ impl SnakeDirection {
 struct Snake {
     size: u32,
     direction: Option<SnakeDirection>,
+    last_position: Vec3,
 }
+
+#[derive(Debug, Component, Default)]
+struct Queue;
 
 #[derive(Debug, Default, Component)]
 struct Border;
@@ -99,10 +106,14 @@ fn main() {
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
+                .with_system(collision_handler)
                 .with_system(change_snake_direction)
                 .with_system(check_collisions)
-                .with_system(collision_handler)
-                .with_system(move_snake.before(change_snake_direction)),
+                .with_system(
+                    move_snake
+                        .before(change_snake_direction)
+                        .after(collision_handler),
+                ),
         )
         .run();
 }
@@ -187,10 +198,11 @@ fn window_resize_system(mut windows: ResMut<Windows>) {
 }
 
 /// The movement of snake per TIME_STEP applied to the ball.
-fn move_snake(mut query: Query<(&mut Transform, &Snake)>) {
-    let (mut transform, snake) = query.single_mut();
+fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>) {
+    let (mut transform, mut snake) = query.single_mut();
     if let Some(direction) = snake.direction {
-        let translation_diff = direction.into_translation();
+        let translation_diff = direction.into_translation() * SNAKE_SPEED_FACTOR;
+        snake.last_position = transform.translation;
         transform.translation += translation_diff;
     }
 }
@@ -223,15 +235,36 @@ fn check_collisions(
 }
 
 fn collision_handler(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut exit: EventWriter<AppExit>,
     mut collision_event_reader: EventReader<CollisionEvent>,
     mut bonus: Query<&mut Transform, With<Bonus>>,
     mut snake: Query<&mut Snake>,
 ) {
     if !collision_event_reader.is_empty() {
+        let mut snake = snake.single_mut();
         for event in collision_event_reader.iter() {
             match event {
                 CollisionEvent::Bonus(points) => {
+                    let queue_position = snake.last_position
+                        - snake.direction.unwrap().into_translation() * SNAKE_QUEUE_DIST;
+                    commands
+                        .spawn()
+                        .insert(Queue)
+                        .insert_bundle(MaterialMesh2dBundle {
+                            mesh: meshes
+                                .add(Mesh::from(shape::Quad {
+                                    size: SNAKE_DIMENSIONS,
+                                    ..default()
+                                }))
+                                .into(),
+                            transform: Transform::default().with_translation(queue_position),
+                            material: materials.add(ColorMaterial::from(Color::GRAY)),
+                            ..default()
+                        })
+                        .insert(Collider);
                     let mut bonus_position = bonus.single_mut();
                     bonus_position.translation = compute_random_translation_inside(
                         MIN_SCREEN_WIDTH + BORDER_SIZE,
@@ -239,11 +272,12 @@ fn collision_handler(
                         MIN_SCREEN_HEIGHT + BORDER_SIZE,
                         MAX_SCREEN_HEIGHT - BORDER_SIZE,
                     );
-                    let mut snake = snake.single_mut();
                     snake.size += points;
                 }
                 CollisionEvent::Border => {
                     exit.send(AppExit);
+                    println!("Score {}", snake.size);
+                    break;
                 }
             }
         }
