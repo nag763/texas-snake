@@ -22,7 +22,7 @@ const SNAKE_SIZE: f32 = 10f32;
 const SNAKE_DIMENSIONS: Vec2 = Vec2::splat(SNAKE_SIZE);
 const SNAKE_SPEED_FACTOR: f32 = 3f32;
 
-const SNAKE_QUEUE_DIST: f32 = 3f32;
+const SNAKE_QUEUE_DIST: f32 = SNAKE_SIZE + 5f32;
 
 const BORDER_SIZE: f32 = 10f32;
 const BORDER_DIMENSIONS: Vec2 = Vec2::splat(BORDER_SIZE);
@@ -68,8 +68,10 @@ struct Snake {
     last_position: Vec3,
 }
 
-#[derive(Debug, Component, Default)]
-struct Queue;
+#[derive(Debug, Component)]
+struct Queue {
+    direction: SnakeDirection,
+}
 
 #[derive(Debug, Default, Component)]
 struct Border;
@@ -113,7 +115,8 @@ fn main() {
                     move_snake
                         .before(change_snake_direction)
                         .after(collision_handler),
-                ),
+                )
+                .with_system(move_queue),
         )
         .run();
 }
@@ -207,6 +210,19 @@ fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>) {
     }
 }
 
+fn move_queue(mut query: Query<&mut Transform, With<Queue>>, snake: Query<&Snake>) {
+    let snake = snake.single();
+    let (mut last_position, snake_direction) = (snake.last_position, snake.direction);
+    if let Some(snake_direction) = snake_direction {
+        for mut transform in query.iter_mut() {
+            let new_last_position = transform.translation;
+            transform.translation =
+                last_position - snake_direction.into_translation() * SNAKE_QUEUE_DIST;
+            last_position = new_last_position;
+        }
+    }
+}
+
 fn check_collisions(
     snake: Query<&Transform, With<Snake>>,
     colliders: Query<(&Transform, Option<&Bonus>), With<Collider>>,
@@ -248,23 +264,28 @@ fn collision_handler(
         for event in collision_event_reader.iter() {
             match event {
                 CollisionEvent::Bonus(points) => {
-                    let queue_position = snake.last_position
-                        - snake.direction.unwrap().into_translation() * SNAKE_QUEUE_DIST;
-                    commands
-                        .spawn()
-                        .insert(Queue)
-                        .insert_bundle(MaterialMesh2dBundle {
-                            mesh: meshes
-                                .add(Mesh::from(shape::Quad {
-                                    size: SNAKE_DIMENSIONS,
-                                    ..default()
-                                }))
-                                .into(),
-                            transform: Transform::default().with_translation(queue_position),
-                            material: materials.add(ColorMaterial::from(Color::GRAY)),
-                            ..default()
-                        })
-                        .insert(Collider);
+                    if let Some(snake_direction) = snake.direction {
+                        let queue_position = snake.last_position
+                            - snake_direction.into_translation() * SNAKE_QUEUE_DIST;
+                        commands
+                            .spawn()
+                            .insert(Queue {
+                                direction: snake_direction,
+                            })
+                            .insert_bundle(MaterialMesh2dBundle {
+                                mesh: meshes
+                                    .add(Mesh::from(shape::Quad {
+                                        size: SNAKE_DIMENSIONS,
+                                        ..default()
+                                    }))
+                                    .into(),
+                                transform: Transform::default().with_translation(queue_position),
+                                material: materials.add(ColorMaterial::from(Color::GRAY)),
+                                ..default()
+                            })
+                            .insert(Collider);
+                        snake.size += points;
+                    }
                     let mut bonus_position = bonus.single_mut();
                     bonus_position.translation = compute_random_translation_inside(
                         MIN_SCREEN_WIDTH + BORDER_SIZE,
@@ -272,7 +293,6 @@ fn collision_handler(
                         MIN_SCREEN_HEIGHT + BORDER_SIZE,
                         MAX_SCREEN_HEIGHT - BORDER_SIZE,
                     );
-                    snake.size += points;
                 }
                 CollisionEvent::Border => {
                     exit.send(AppExit);
