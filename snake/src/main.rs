@@ -31,6 +31,11 @@ const BONUS_DIAMETER: f32 = 10f32;
 /// The size of each border
 const BORDER_SIZE: f32 = 15f32;
 
+/// The score's font size.
+const FONT_SIZE: f32 = 10f32;
+/// The score's padding.  
+const FONT_PADDING: Val = Val::Px(1f32);
+
 /// The snake direction in a 2D plan
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum SnakeDirection {
@@ -73,10 +78,6 @@ impl SnakeDirection {
 /// The snake is the player.
 #[derive(Debug, Component, Default)]
 struct Snake {
-    /// The size of the snake is the number of times he got a bonus.
-    ///
-    /// For each bonus => the size increases.
-    size: u32,
     /// The snake direction.
     direction: Option<SnakeDirection>,
     /// Its last position.
@@ -96,6 +97,9 @@ struct Border;
 /// It can either be a bonus, or a border.
 #[derive(Debug, Default, Component)]
 struct Collider;
+
+#[derive(Component, Default, Deref, DerefMut)]
+struct Score(u32);
 
 /// The event following a conflict of position between the snake and a collider.
 #[derive(Default)]
@@ -134,10 +138,12 @@ fn compute_random_bonus_position() -> Vec3 {
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::BLACK))
+        .insert_resource(Score::default())
         .add_plugins(DefaultPlugins)
         .add_event::<CollisionEvent>()
         .add_startup_system(setup)
         .add_system(window_resize_system)
+        .add_system(update_score)
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
@@ -158,10 +164,28 @@ fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    asset_server: Res<AssetServer>,
 ) {
     let bonus_initial_position = compute_random_bonus_position();
     // The camera
     commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn_bundle(
+        TextBundle::from_sections([TextSection::from_style(TextStyle {
+            font_size: FONT_SIZE,
+            color: Color::BLACK,
+            font: asset_server.load("score_font.otf"),
+        })])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                bottom: FONT_PADDING,
+                right: FONT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+    );
+    // The snake
     commands
         .spawn()
         .insert(Snake::default())
@@ -275,6 +299,12 @@ fn window_resize_system(mut windows: ResMut<Windows>) {
     window.set_resolution(SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
+/// Updates the displayed score on the screen.                  
+fn update_score(score: Res<Score>, mut query: Query<&mut Text>) {
+    let mut text = query.single_mut();
+    text.sections[0].value = score.0.to_string();
+}
+
 /// The movement of snake per TIME_STEP applied to the ball.
 fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>) {
     let (mut transform, mut snake) = query.single_mut();
@@ -328,10 +358,9 @@ fn collision_handler(
     mut exit: EventWriter<AppExit>,
     mut collision_event_reader: EventReader<CollisionEvent>,
     mut bonus: Query<&mut Transform, With<Bonus>>,
-    mut snake: Query<&mut Snake>,
+    mut score: ResMut<Score>,
 ) {
     if !collision_event_reader.is_empty() {
-        let mut snake = snake.single_mut();
         for event in collision_event_reader.iter() {
             match event {
                 CollisionEvent::Bonus(points) => {
@@ -355,13 +384,13 @@ fn collision_handler(
                             ..default()
                         })
                         .insert(Collider);
-                    snake.size += points;
+                    score.0 += points;
                     let mut bonus_position = bonus.single_mut();
                     bonus_position.translation = compute_random_bonus_position();
                 }
                 CollisionEvent::Border => {
                     exit.send(AppExit);
-                    println!("Score {}", snake.size);
+                    println!("Score {}", score.0);
                     break;
                 }
             }

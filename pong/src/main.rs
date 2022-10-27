@@ -172,7 +172,7 @@ fn setup(
             })
             .insert(Collider);
     };
-    // And then we create a border everywhere in the right and left between the 
+    // And then we create a border everywhere in the right and left between the
     // upper and lower paddle.
     for i in LOWER_PADDLE_Y_AXIS.floor() as i32..HIGHER_PADDLE_Y_AXIS.floor() as i32 {
         brick_maker_closure(SCREEN_WIDTH / 2., i as f32);
@@ -206,7 +206,7 @@ struct Border;
 #[derive(Component)]
 struct Collider;
 
-/// The oob event, used to inform other systems that the balls is out of the 
+/// The oob event, used to inform other systems that the balls is out of the
 /// limits of the game.
 #[derive(Default, Component)]
 struct OutOfBoundsEvent;
@@ -228,7 +228,7 @@ struct BallVelocity {
     /// Should either be strictly equals to 1 or -1.
     direction: f32,
     /// The speed of the ball.
-    /// 
+    ///
     /// How much distance the ball will travel vertically per TIME_STEP.
     speed: f32,
     /// The angle of the ball.
@@ -320,7 +320,8 @@ fn update_scoresheet(scoresheet: Res<ScoreSheet>, mut query: Query<&mut Text>) {
             0 => scoresheet.blue,
             1 => scoresheet.red,
             _ => continue,
-        }.to_string();
+        }
+        .to_string();
         text.sections[0].value = text_val;
     }
 }
