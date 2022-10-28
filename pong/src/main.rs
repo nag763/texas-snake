@@ -30,7 +30,7 @@ const BALL_TRANSLATION_PER_STEP: f32 = 2.5;
 /// How much a hit between the paddle and the ball will deflect.
 const BALL_DEFLECTION_FACTOR: f32 = 40.;
 /// Each border size.
-const BORDER_SPLAT_SIZE: f32 = 1.0f32;
+const BORDER_DIMENSIONS : Vec2 = Vec2::new(1f32, HIGHER_PADDLE_Y_AXIS*2f32);
 /// How much the ball is fasten everytime it touches a paddle.
 const SPEED_INCREASE_ON_TOUCH: f32 = 1.1;
 
@@ -155,29 +155,26 @@ fn setup(
             ..default()
         });
 
-    // The closure to create bricks for a given x and y position
-    let mut brick_maker_closure = |x: f32, y: f32| {
+        for i in [-1f32, 1f32] {
         commands
             .spawn()
             .insert(Border)
             .insert_bundle(SpriteBundle {
                 sprite: Sprite::default(),
                 transform: Transform {
-                    translation: Vec3::new(x, y, 0.),
-                    scale: Vec3::splat(BORDER_SPLAT_SIZE),
+                    translation: Vec3::new(i*SCREEN_WIDTH/2f32, 0f32, 0.),
+                    scale: Vec3 {
+                        x: BORDER_DIMENSIONS.x,
+                        y: BORDER_DIMENSIONS.y,
+                        ..default()
+                    },
                     ..default()
                 },
-                visibility: Visibility { is_visible: false },
+                visibility: Visibility { is_visible : false },
                 ..default()
             })
             .insert(Collider);
-    };
-    // And then we create a border everywhere in the right and left between the
-    // upper and lower paddle.
-    for i in LOWER_PADDLE_Y_AXIS.floor() as i32..HIGHER_PADDLE_Y_AXIS.floor() as i32 {
-        brick_maker_closure(SCREEN_WIDTH / 2., i as f32);
-        brick_maker_closure(-SCREEN_WIDTH / 2., i as f32);
-    }
+        }
 }
 
 /// Resizes the window at startup.
@@ -252,7 +249,7 @@ fn check_bounds(
 
         // The dimensions of the border differ from the dimension of the paddle.
         let dimensions = match maybe_border {
-            Some(_) => Vec2::splat(BORDER_SPLAT_SIZE),
+            Some(_) => BORDER_DIMENSIONS,
             None => PADDLE_DIMENSIONS,
         };
 
