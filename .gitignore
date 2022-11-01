@@ -1,3 +1,6 @@
 /target
 **/target
 **/dist
+**/build
+webapp/games/*
+webapp/assets/*

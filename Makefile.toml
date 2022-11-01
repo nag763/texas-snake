@@ -1,0 +1,36 @@
+[env]
+BUILD_TYPE = "--quiet"
+BUILD_DIR = "target"
+WEBAPP_NAME = "webapp"
+WEBAPP_ASSET_DIR = "assets"
+BUILD_TARGET_ROOT = "target/wasm32-unknown-unknown/"
+
+[env.development]
+BUILD_TARGET = "${BUILD_TARGET_ROOT}/debug"
+
+[env.prod]
+BUILD_TARGET = "${BUILD_TARGET_ROOT}/release"
+BUILD_TYPE = "--release"
+
+[tasks.build-snake]
+args = ["build", "--target", "wasm32-unknown-unknown", "--bin", "snake", "${BUILD_TYPE}", "--target-dir", "${BUILD_DIR}"]
+command = "cargo"
+workspace = false
+
+[tasks.pack-snake]
+args = ["${BUILD_TARGET}/snake.wasm", "--target", "web", "--out-dir", "${WEBAPP_NAME}/games", "--no-typescript"]
+command = "wasm-bindgen"
+workspace = false
+
+[tasks.copy-assets]
+args = ["snake/assets", "${WEBAPP_NAME}/", "-r"]
+command = "cp"
+workspace = false
+
+[tasks.prepare-snake]
+dependencies = [
+	"build-snake",
+	"pack-snake",
+	"copy-assets"
+]
+workspace = false

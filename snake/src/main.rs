@@ -31,7 +31,7 @@ const BONUS_DIAMETER: f32 = 10f32;
 const BORDER_SIZE: f32 = 15f32;
 
 /// The font name
-const FONT_ASSET_NAME : &str = "score_font.otf";
+const FONT_ASSET_NAME: &str = "score_font.otf";
 
 #[derive(Default, Debug, Eq, PartialEq, Copy, Clone)]
 enum GameState {
@@ -332,7 +332,7 @@ fn update_score(
             color: Color::WHITE,
             font: asset_server.load(FONT_ASSET_NAME),
         },
-        GameState::Initialized => TextStyle::default()
+        GameState::Initialized => TextStyle::default(),
     };
     let style_val = match *game_state {
         GameState::Running => Style {
@@ -360,7 +360,7 @@ fn update_score(
         GameState::Initialized => Style {
             display: Display::None,
             ..default()
-        }
+        },
     };
     text.sections[0].value = text_val;
     text.sections[0].style = text_style_val;

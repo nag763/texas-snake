@@ -30,7 +30,7 @@ const BALL_TRANSLATION_PER_STEP: f32 = 2.5;
 /// How much a hit between the paddle and the ball will deflect.
 const BALL_DEFLECTION_FACTOR: f32 = 40.;
 /// Each border size.
-const BORDER_DIMENSIONS : Vec2 = Vec2::new(1f32, HIGHER_PADDLE_Y_AXIS*2f32);
+const BORDER_DIMENSIONS: Vec2 = Vec2::new(1f32, HIGHER_PADDLE_Y_AXIS * 2f32);
 /// How much the ball is fasten everytime it touches a paddle.
 const SPEED_INCREASE_ON_TOUCH: f32 = 1.1;
 
@@ -155,14 +155,14 @@ fn setup(
             ..default()
         });
 
-        for i in [-1f32, 1f32] {
+    for i in [-1f32, 1f32] {
         commands
             .spawn()
             .insert(Border)
             .insert_bundle(SpriteBundle {
                 sprite: Sprite::default(),
                 transform: Transform {
-                    translation: Vec3::new(i*SCREEN_WIDTH/2f32, 0f32, 0.),
+                    translation: Vec3::new(i * SCREEN_WIDTH / 2f32, 0f32, 0.),
                     scale: Vec3 {
                         x: BORDER_DIMENSIONS.x,
                         y: BORDER_DIMENSIONS.y,
@@ -170,11 +170,11 @@ fn setup(
                     },
                     ..default()
                 },
-                visibility: Visibility { is_visible : false },
+                visibility: Visibility { is_visible: false },
                 ..default()
             })
             .insert(Collider);
-        }
+    }
 }
 
 /// Resizes the window at startup.
