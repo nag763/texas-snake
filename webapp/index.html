@@ -1,9 +1,23 @@
-<!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-	<link data-trunk rel="copy-dir" href="assets">
-	<link data-trunk rel="copy-dir" href="games">
-        <title>Yew App</title>
-    </head>
-</html>
+	<head>
+	<script defer src="https://unpkg.com/alpinejs@3.10.5/dist/cdn.min.js"></script>
+	<link rel="stylesheet" href="/assets/tailwind.css"/>
+	<title>Snakers</title>
+	</head>
+<body class="bg-black grid grid-cols-12 py-4">
+		<div class="col-span-auto xl:col-span-8 2xl:col-span-3">
+		</div>
+		<div class="col-span-12 xl:col-span-8 2xl:col-span-6" >
+			<div class="grid grid-rows-6 space-y-5">
+				<div class="row-span-2 space-y-3"/>
+			<h2 class="text-white text-2xl flex place-content-center">Snake game</h2>
+			<p class="text-white">The goal of this game is to have the longest queue possible ! By eating bonus, your length will grow, by growing up, your score will as well. The longer you are, the more points you have. Be carefoul though, the game will be more and more complicated given the snake length.</p>
+				</div>
+				<div class="row-span-4">
+					<iframe src="wasm_loader.html" width="100%" height="100%"></iframe>
+
+				</div>
+			</div>
+		<div class="col-span-auto xl:col-span-2 2xl:col-span-3">
+		</div>
+</body>

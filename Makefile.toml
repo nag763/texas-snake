@@ -34,3 +34,9 @@ dependencies = [
 	"copy-assets"
 ]
 workspace = false
+
+[tasks.build-styles]
+args = ["tailwindcss", "-o", "webapp/assets", "-c", "webapp/tailwind.config.js"]
+command = "npx"
+workspace = false
+
