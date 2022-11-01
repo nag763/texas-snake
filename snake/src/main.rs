@@ -30,10 +30,8 @@ const BONUS_DIAMETER: f32 = 10f32;
 /// The size of each border
 const BORDER_SIZE: f32 = 15f32;
 
-/// The score's font size.
-const FONT_SIZE: f32 = 10f32;
-/// The score's padding.  
-const FONT_PADDING: Val = Val::Px(1f32);
+/// The font name
+const FONT_ASSET_NAME : &str = "score_font.otf";
 
 #[derive(Default, Debug, Eq, PartialEq, Copy, Clone)]
 enum GameState {
@@ -91,6 +89,9 @@ struct Snake {
     /// Its last position.
     last_position: Vec3,
 }
+
+#[derive(Debug, Component)]
+struct UserText;
 
 /// The snake's queue.
 #[derive(Debug, Component)]
@@ -173,26 +174,14 @@ fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    asset_server: Res<AssetServer>,
 ) {
     // The camera
     commands.spawn_bundle(Camera2dBundle::default());
-    commands.spawn_bundle(
-        TextBundle::from_sections([TextSection::from_style(TextStyle {
-            font_size: FONT_SIZE,
-            color: Color::BLACK,
-            font: asset_server.load("score_font.otf"),
-        })])
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            position: UiRect {
-                bottom: FONT_PADDING,
-                right: FONT_PADDING,
-                ..default()
-            },
-            ..default()
-        }),
-    );
+    commands
+        .spawn_bundle(
+            TextBundle::from_sections([TextSection::default()]).with_style(Style::default()),
+        )
+        .insert(UserText);
     // The borders
     commands
         .spawn()
@@ -316,9 +305,66 @@ fn window_resize_system(mut windows: ResMut<Windows>) {
 }
 
 /// Updates the displayed score on the screen.                  
-fn update_score(score: Res<Score>, mut query: Query<&mut Text>) {
-    let mut text = query.single_mut();
-    text.sections[0].value = score.to_string();
+fn update_score(
+    game_state: Res<GameState>,
+    asset_server: Res<AssetServer>,
+    score: Res<Score>,
+    mut query: Query<(&mut Text, &mut Style), With<UserText>>,
+) {
+    let (mut text, mut style) = query.single_mut();
+    let text_val = match *game_state {
+        GameState::Running => score.to_string(),
+        GameState::Over => format!(
+            "Game over\nYour score : {}\nPress 'R' to restart.",
+            &score.to_string()
+        ),
+        GameState::Paused => "The game has been paused\nPress 'P' to resume.".into(),
+        GameState::Initialized => String::default(),
+    };
+    let text_style_val = match *game_state {
+        GameState::Running => TextStyle {
+            font_size: 10f32,
+            color: Color::BLACK,
+            font: asset_server.load(FONT_ASSET_NAME),
+        },
+        GameState::Over | GameState::Paused => TextStyle {
+            font_size: 30f32,
+            color: Color::WHITE,
+            font: asset_server.load(FONT_ASSET_NAME),
+        },
+        GameState::Initialized => TextStyle::default()
+    };
+    let style_val = match *game_state {
+        GameState::Running => Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                bottom: Val::Px(1f32),
+                right: Val::Px(1f32),
+                ..default()
+            },
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        GameState::Over => Style {
+            position_type: PositionType::Absolute,
+            position: UiRect::all(Val::Px(170f32)),
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        GameState::Paused => Style {
+            position_type: PositionType::Absolute,
+            position: UiRect::all(Val::Px(100f32)),
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        GameState::Initialized => Style {
+            display: Display::None,
+            ..default()
+        }
+    };
+    text.sections[0].value = text_val;
+    text.sections[0].style = text_style_val;
+    *style = style_val;
 }
 
 /// The movement of snake per TIME_STEP applied to the ball.
@@ -425,7 +471,6 @@ fn collision_handler(
                     commands.entity(queue_entity).despawn();
                 }
                 *game_state = GameState::Over;
-                println!("Score {:?}", *score);
             }
         }
     }
@@ -450,8 +495,9 @@ fn handle_input(
     }
     if *game_state == GameState::Over && keyboard_input.just_pressed(KeyCode::R) {
         init_game_components(commands, materials, meshes);
-        *game_state = GameState::Initialized;
         score.0 = 0;
+        *game_state = GameState::Initialized;
+        return;
     }
 
     let mut new_direction: Option<SnakeDirection> = None;
@@ -459,7 +505,7 @@ fn handle_input(
     if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
         new_direction = Some(SnakeDirection::Right);
     }
-    if keyboard_input.any_pressed([KeyCode::Left, KeyCode::D]) {
+    if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Q]) {
         new_direction = Some(SnakeDirection::Left);
     }
     if keyboard_input.any_pressed([KeyCode::Up, KeyCode::Z]) {
