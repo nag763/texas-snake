@@ -1,4 +1,5 @@
 use rand::Rng;
+use std::fmt;
 
 use bevy::{
     prelude::*, sprite::collide_aabb::collide, sprite::MaterialMesh2dBundle, time::FixedTimestep,
@@ -33,10 +34,14 @@ const BORDER_SIZE: f32 = 15f32;
 /// The font name
 const FONT_ASSET_NAME: &str = "score_font.otf";
 
+const NORMAL_BUTTON: Color = Color::DARK_GRAY;
+const HOVERED_BUTTON: Color = Color::GRAY;
+
 #[derive(Default, Debug, Eq, PartialEq, Copy, Clone)]
 enum GameState {
     #[default]
     Initialized,
+    Ready,
     Running,
     Paused,
     Over,
@@ -110,6 +115,133 @@ struct Collider;
 #[derive(Component, Default, Deref, DerefMut, Debug)]
 struct Score(u32);
 
+#[derive(Component, Debug, Eq, PartialEq, Copy, Clone)]
+enum BorderSet {
+    Screen,
+    Cross,
+    Horizontal,
+    Vertical,
+}
+
+impl fmt::Display for BorderSet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl BorderSet {
+    fn iterator() -> impl Iterator<Item = Self> {
+        [
+            BorderSet::Screen,
+            BorderSet::Cross,
+            BorderSet::Horizontal,
+            BorderSet::Vertical,
+        ]
+        .into_iter()
+    }
+
+    fn get_borders(&self) -> Vec<Transform> {
+        match self {
+            BorderSet::Screen => vec![
+                Transform::default()
+                    .with_translation(Vec3 {
+                        y: MAX_SCREEN_HEIGHT,
+                        ..default()
+                    })
+                    .with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32)),
+                Transform::default()
+                    .with_translation(Vec3 {
+                        y: MIN_SCREEN_HEIGHT,
+                        ..default()
+                    })
+                    .with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32)),
+                Transform::default()
+                    .with_translation(Vec3 {
+                        x: MAX_SCREEN_WIDTH,
+                        ..default()
+                    })
+                    .with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32)),
+                Transform::default()
+                    .with_translation(Vec3 {
+                        x: MIN_SCREEN_WIDTH,
+                        ..default()
+                    })
+                    .with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32)),
+            ],
+            BorderSet::Horizontal => {
+                vec![Transform::default().with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32))]
+            }
+            BorderSet::Vertical => {
+                vec![Transform::default().with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32))]
+            }
+            BorderSet::Cross => vec![
+                Transform::default().with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32)),
+                Transform::default().with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32)),
+            ],
+        }
+    }
+
+    fn compute_random_bonus_position(&self) -> Vec3 {
+        let mut rng = rand::thread_rng();
+        let bonus_dimensions = Vec2::splat(BONUS_DIAMETER);
+        'generator: loop {
+            let x = rng.gen_range(MIN_SCREEN_WIDTH..MAX_SCREEN_WIDTH);
+            let y = rng.gen_range(MIN_SCREEN_HEIGHT..MAX_SCREEN_HEIGHT);
+            let random_position = Vec3::new(x, y, 0f32);
+            for border in self.get_borders() {
+                let border_dimensions = Vec2::new(border.scale.x, border.scale.y);
+                if collide(
+                    border.translation,
+                    border_dimensions,
+                    random_position,
+                    bonus_dimensions,
+                )
+                .is_some()
+                {
+                    continue 'generator;
+                }
+            }
+            return random_position;
+        }
+    }
+
+    fn get_snake_initial_position(&self) -> Vec3 {
+        match self {
+            BorderSet::Screen => Vec3::default(),
+            _ => Vec3 {
+                x: -150f32,
+                y: 150f32,
+                ..default()
+            },
+        }
+    }
+
+    fn spawn_borders(
+        &self,
+        mut commands: Commands,
+        mut materials: ResMut<Assets<ColorMaterial>>,
+        mut meshes: ResMut<Assets<Mesh>>,
+    ) {
+        for border in self.get_borders() {
+            commands
+                .spawn()
+                .insert_bundle(MaterialMesh2dBundle {
+                    mesh: meshes
+                        .add(Mesh::from(shape::Quad {
+                            size: Vec2::splat(1f32),
+                            flip: false,
+                        }))
+                        .into(),
+                    transform: border,
+                    material: materials.add(ColorMaterial::from(Color::WHITE)),
+                    ..default()
+                })
+                .insert(Collider);
+        }
+        init_game_components(commands, materials, meshes, *self);
+    }
+}
+
 /// The event following a conflict of position between the snake and a collider.
 #[derive(Default)]
 enum CollisionEvent {
@@ -126,34 +258,18 @@ struct Bonus {
     extra_bonus: bool,
 }
 
-/// Computes a random translation inside a box defined by two position in each
-/// axis.
-fn compute_random_translation_inside(x0: f32, x1: f32, y0: f32, y1: f32) -> Vec3 {
-    let mut rng = rand::thread_rng();
-    let x = rng.gen_range(x0..x1);
-    let y = rng.gen_range(y0..y1);
-    Vec3 { x, y, ..default() }
-}
-
-fn compute_random_bonus_position() -> Vec3 {
-    compute_random_translation_inside(
-        MIN_SCREEN_WIDTH + BORDER_SIZE,
-        MAX_SCREEN_WIDTH - BORDER_SIZE,
-        MIN_SCREEN_HEIGHT + BORDER_SIZE,
-        MAX_SCREEN_HEIGHT - BORDER_SIZE,
-    )
-}
-
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::BLACK))
         .init_resource::<Score>()
         .init_resource::<GameState>()
+        .init_resource::<Option<BorderSet>>()
         .add_plugins(DefaultPlugins)
         .add_event::<CollisionEvent>()
         .add_startup_system(setup)
         .add_startup_system(window_resize_system)
         .add_system(update_score)
+        .add_system(button_system)
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
@@ -170,11 +286,7 @@ fn main() {
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // The camera
     commands.spawn_bundle(Camera2dBundle::default());
     commands
@@ -182,92 +294,42 @@ fn setup(
             TextBundle::from_sections([TextSection::default()]).with_style(Style::default()),
         )
         .insert(UserText);
-    // The borders
-    commands
-        .spawn()
-        .insert_bundle(MaterialMesh2dBundle {
-            mesh: meshes
-                .add(Mesh::from(shape::Quad {
-                    size: Vec2::splat(1f32),
-                    flip: false,
-                }))
-                .into(),
-            transform: Transform::default()
-                .with_translation(Vec3 {
-                    x: MIN_SCREEN_WIDTH,
+    for border_set_variant in BorderSet::iterator() {
+        commands
+            .spawn()
+            .insert_bundle(ButtonBundle {
+                style: Style {
+                    size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                    margin: UiRect::all(Val::Auto),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
                     ..default()
-                })
-                .with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32)),
-            material: materials.add(ColorMaterial::from(Color::WHITE)),
-            ..default()
-        })
-        .insert(Collider);
-    commands
-        .spawn()
-        .insert_bundle(MaterialMesh2dBundle {
-            mesh: meshes
-                .add(Mesh::from(shape::Quad {
-                    size: Vec2::splat(1f32),
-                    flip: true,
-                }))
-                .into(),
-            transform: Transform::default()
-                .with_translation(Vec3 {
-                    x: MAX_SCREEN_WIDTH,
-                    ..default()
-                })
-                .with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32)),
-            material: materials.add(ColorMaterial::from(Color::WHITE)),
-            ..default()
-        })
-        .insert(Collider);
-    commands
-        .spawn()
-        .insert_bundle(MaterialMesh2dBundle {
-            mesh: meshes
-                .add(Mesh::from(shape::Quad {
-                    size: Vec2::splat(1f32),
-                    flip: false,
-                }))
-                .into(),
-            transform: Transform::default()
-                .with_translation(Vec3 {
-                    y: MAX_SCREEN_HEIGHT,
-                    ..default()
-                })
-                .with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32)),
-            material: materials.add(ColorMaterial::from(Color::WHITE)),
-            ..default()
-        })
-        .insert(Collider);
-    commands
-        .spawn()
-        .insert_bundle(MaterialMesh2dBundle {
-            mesh: meshes
-                .add(Mesh::from(shape::Quad {
-                    size: Vec2::splat(1f32),
-                    flip: true,
-                }))
-                .into(),
-            transform: Transform::default()
-                .with_translation(Vec3 {
-                    y: MIN_SCREEN_HEIGHT,
-                    ..default()
-                })
-                .with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32)),
-            material: materials.add(ColorMaterial::from(Color::WHITE)),
-            ..default()
-        })
-        .insert(Collider);
-    init_game_components(commands, materials, meshes);
+                },
+                color: NORMAL_BUTTON.into(),
+                ..default()
+            })
+            .with_children(|parent| {
+                parent.spawn_bundle(TextBundle::from_section(
+                    border_set_variant.to_string(),
+                    TextStyle {
+                        font: asset_server.load(FONT_ASSET_NAME),
+                        font_size: 20.0,
+                        color: Color::WHITE,
+                    },
+                ));
+            })
+            .insert(border_set_variant);
+    }
 }
 
 fn init_game_components(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    border_set: BorderSet,
 ) {
-    let bonus_initial_position = compute_random_bonus_position();
+    let snake_initial_position = border_set.get_snake_initial_position();
+    let bonus_initial_position = border_set.compute_random_bonus_position();
     // The snake
     commands
         .spawn()
@@ -279,7 +341,10 @@ fn init_game_components(
                     ..default()
                 }))
                 .into(),
-            transform: Transform::default(),
+            transform: Transform {
+                translation: snake_initial_position,
+                ..default()
+            },
             material: materials.add(ColorMaterial::from(Color::WHITE)),
             ..default()
         });
@@ -304,6 +369,37 @@ fn window_resize_system(mut windows: ResMut<Windows>) {
     window.set_resolution(SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
+fn button_system(
+    mut button_query: Query<(&Interaction, &mut UiColor, Entity, &BorderSet)>,
+    mut game_state: ResMut<GameState>,
+    mut border_set: ResMut<Option<BorderSet>>,
+    mut commands: Commands,
+    materials: ResMut<Assets<ColorMaterial>>,
+    meshes: ResMut<Assets<Mesh>>,
+) {
+    for (interaction, mut color, button_entity, button) in button_query.iter_mut() {
+        if *game_state == GameState::Initialized {
+            match *interaction {
+                Interaction::Clicked => {
+                    commands.entity(button_entity).despawn_recursive();
+                    button.spawn_borders(commands, materials, meshes);
+                    *border_set = Some(*button);
+                    *game_state = GameState::Ready;
+                    break;
+                }
+                Interaction::Hovered => {
+                    *color = HOVERED_BUTTON.into();
+                }
+                Interaction::None => {
+                    *color = NORMAL_BUTTON.into();
+                }
+            }
+        } else {
+            commands.entity(button_entity).despawn_recursive();
+        }
+    }
+}
+
 /// Updates the displayed score on the screen.                  
 fn update_score(
     game_state: Res<GameState>,
@@ -319,7 +415,8 @@ fn update_score(
             &score.to_string()
         ),
         GameState::Paused => "The game has been paused\nPress 'P' to resume.".into(),
-        GameState::Initialized => String::default(),
+        GameState::Ready => String::default(),
+        GameState::Initialized => "Choose a border set".into(),
     };
     let text_style_val = match *game_state {
         GameState::Running => TextStyle {
@@ -327,12 +424,12 @@ fn update_score(
             color: Color::BLACK,
             font: asset_server.load(FONT_ASSET_NAME),
         },
-        GameState::Over | GameState::Paused => TextStyle {
+        GameState::Over | GameState::Paused | GameState::Initialized => TextStyle {
             font_size: 30f32,
             color: Color::WHITE,
             font: asset_server.load(FONT_ASSET_NAME),
         },
-        GameState::Initialized => TextStyle::default(),
+        GameState::Ready => TextStyle::default(),
     };
     let style_val = match *game_state {
         GameState::Running => Style {
@@ -351,13 +448,13 @@ fn update_score(
             justify_content: JustifyContent::Center,
             ..default()
         },
-        GameState::Paused => Style {
+        GameState::Paused | GameState::Initialized => Style {
             position_type: PositionType::Absolute,
             position: UiRect::all(Val::Px(100f32)),
             justify_content: JustifyContent::Center,
             ..default()
         },
-        GameState::Initialized => Style {
+        GameState::Ready => Style {
             display: Display::None,
             ..default()
         },
@@ -374,7 +471,14 @@ fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>, game_state: Res<Ga
         if let Some(direction) = snake.direction {
             let translation_diff = direction.into_translation() * SNAKE_SPEED_FACTOR;
             snake.last_position = transform.translation;
-            transform.translation += translation_diff;
+            let mut new_translation = transform.translation + translation_diff;
+            if MAX_SCREEN_WIDTH < f32::abs(new_translation.x) {
+                new_translation.x = -MAX_SCREEN_WIDTH * new_translation.x.signum();
+            }
+            if MAX_SCREEN_HEIGHT < f32::abs(new_translation.y) {
+                new_translation.y = -MAX_SCREEN_HEIGHT * new_translation.y.signum();
+            }
+            transform.translation = new_translation;
         }
     }
 }
@@ -432,6 +536,7 @@ fn collision_handler(
     mut bonus: Query<(&mut Transform, Entity), With<Bonus>>,
     mut score: ResMut<Score>,
     mut game_state: ResMut<GameState>,
+    border_set: Res<Option<BorderSet>>,
     snake: Query<Entity, With<Snake>>,
     queue: Query<Entity, With<Queue>>,
 ) {
@@ -460,7 +565,7 @@ fn collision_handler(
                     .insert(Collider);
                 score.0 += points;
                 let (mut bonus_position, _) = bonus.single_mut();
-                bonus_position.translation = compute_random_bonus_position();
+                bonus_position.translation = border_set.unwrap().compute_random_bonus_position();
             }
             CollisionEvent::Border => {
                 let snake_entity = snake.single();
@@ -484,6 +589,7 @@ fn handle_input(
     mut score: ResMut<Score>,
     mut query: Query<&mut Snake>,
     mut game_state: ResMut<GameState>,
+    border_set: Res<Option<BorderSet>>,
 ) {
     if keyboard_input.any_just_pressed([KeyCode::Space, KeyCode::P]) {
         if *game_state == GameState::Paused {
@@ -494,9 +600,9 @@ fn handle_input(
         return;
     }
     if *game_state == GameState::Over && keyboard_input.just_pressed(KeyCode::R) {
-        init_game_components(commands, materials, meshes);
+        init_game_components(commands, materials, meshes, border_set.unwrap());
         score.0 = 0;
-        *game_state = GameState::Initialized;
+        *game_state = GameState::Ready;
         return;
     }
 
@@ -514,7 +620,7 @@ fn handle_input(
     if keyboard_input.any_pressed([KeyCode::Down, KeyCode::S]) {
         new_direction = Some(SnakeDirection::Down);
     }
-    if *game_state == GameState::Initialized && new_direction.is_some() {
+    if *game_state == GameState::Ready && new_direction.is_some() {
         *game_state = GameState::Running;
     }
 
