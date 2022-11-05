@@ -8,6 +8,8 @@ use bevy::{
     time::{FixedTimestep, Stopwatch},
 };
 
+const APP_TITLE : &str = "TI Snake";
+
 /// How many times per seconds the system does an action.
 const TIME_STEP: f64 = 0.02;
 
@@ -40,7 +42,7 @@ const FONT_ASSET_NAME: &str = "score_font.otf";
 const NORMAL_BUTTON: Color = Color::DARK_GRAY;
 const HOVERED_BUTTON: Color = Color::GRAY;
 
-const CHANCE_OF_EXTRA_BONUS: f64 = 0.15f64;
+const CHANCE_OF_EXTRA_BONUS: f64 = 0.10f64;
 const EXTRA_BONUS_RGB: (f32, f32, f32) = (202f32 / 256f32, 138f32 / 256f32, 4f32 / 265f32);
 const TIME_FOR_BONUS : f32 = 10f32;
 
@@ -380,6 +382,7 @@ fn init_game_components(
 /// Resizes the window at startup.
 fn window_resize_system(mut windows: ResMut<Windows>) {
     let window = windows.get_primary_mut().unwrap();
+    window.set_title(APP_TITLE.into());
     window.set_resolution(SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
