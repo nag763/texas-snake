@@ -2,7 +2,10 @@ use rand::Rng;
 use std::fmt;
 
 use bevy::{
-    prelude::*, sprite::collide_aabb::collide, sprite::MaterialMesh2dBundle, time::FixedTimestep,
+    prelude::*,
+    sprite::collide_aabb::collide,
+    sprite::MaterialMesh2dBundle,
+    time::{FixedTimestep, Stopwatch},
 };
 
 /// How many times per seconds the system does an action.
@@ -36,6 +39,10 @@ const FONT_ASSET_NAME: &str = "score_font.otf";
 
 const NORMAL_BUTTON: Color = Color::DARK_GRAY;
 const HOVERED_BUTTON: Color = Color::GRAY;
+
+const CHANCE_OF_EXTRA_BONUS: f64 = 0.15f64;
+const EXTRA_BONUS_RGB: (f32, f32, f32) = (202f32 / 256f32, 138f32 / 256f32, 4f32 / 265f32);
+const TIME_FOR_BONUS : f32 = 10f32;
 
 #[derive(Default, Debug, Eq, PartialEq, Copy, Clone)]
 enum GameState {
@@ -253,11 +260,15 @@ enum CollisionEvent {
 
 /// A bonus once collided with the snake will increase its size, and thus the
 /// player's score.
-#[derive(Component, Default)]
-struct Bonus {
-    /// Whether the bonus is an extra bonus.
-    extra_bonus: bool,
+#[derive(Component, Default, Clone, Copy, Debug)]
+enum Bonus {
+    #[default]
+    Normal,
+    ExtraBonus,
 }
+
+#[derive(Clone, Deref, DerefMut, Default)]
+struct ExtraBonusTimer(Stopwatch);
 
 fn main() {
     App::new()
@@ -265,6 +276,7 @@ fn main() {
         .init_resource::<Score>()
         .init_resource::<GameState>()
         .init_resource::<Option<BorderSet>>()
+        .init_resource::<ExtraBonusTimer>()
         .add_plugins(DefaultPlugins)
         .add_event::<CollisionEvent>()
         .add_startup_system(setup)
@@ -276,6 +288,7 @@ fn main() {
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
                 .with_system(check_collisions)
                 .with_system(handle_input)
+                .with_system(extra_bonus_timeout.before(handle_input))
                 .with_system(move_snake.before(handle_input))
                 .with_system(move_queue.before(move_snake))
                 .with_system(
@@ -407,7 +420,6 @@ fn update_score(
     asset_server: Res<AssetServer>,
     score: Res<Score>,
     mut query: Query<(&mut Text, &mut Style), With<UserText>>,
-    bonus_position: Query<&Transform, With<Bonus>>,
 ) {
     let (mut text, mut style) = query.single_mut();
     let text_val = match *game_state {
@@ -523,13 +535,47 @@ fn check_collisions(
             );
             if collide.is_some() {
                 if let Some(bonus) = maybe_bonus {
-                    let points = match bonus.extra_bonus {
-                        true => 5,
-                        false => 1,
+                    let points = match bonus {
+                        Bonus::ExtraBonus => 5,
+                        Bonus::Normal => 1,
                     };
                     collision_event_writer.send(CollisionEvent::Bonus(points));
                 } else {
                     collision_event_writer.send_default();
+                }
+            }
+        }
+    }
+}
+
+fn extra_bonus_timeout(
+    mut commands: Commands,
+    bonus_query: Query<(Entity, &Handle<ColorMaterial>, &Bonus)>,
+    time: Res<Time>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut extra_bonus_timer: ResMut<ExtraBonusTimer>,
+    game_state: Res<GameState>,
+) {
+    if *game_state == GameState::Running {
+        for (entity, material, bonus) in bonus_query.iter() {
+            match bonus {
+                Bonus::Normal => (),
+                Bonus::ExtraBonus => {
+                    extra_bonus_timer.tick(time.delta());
+                    let elapsed_secs = extra_bonus_timer.elapsed_secs();
+                    if elapsed_secs < TIME_FOR_BONUS {
+                        let new_alpha = 1f32 - elapsed_secs/TIME_FOR_BONUS;
+                        let mut color_mat = materials.get_mut(&material).unwrap();
+                        color_mat.color = Color::Rgba {
+                            red: EXTRA_BONUS_RGB.0,
+                            green: EXTRA_BONUS_RGB.1,
+                            blue: EXTRA_BONUS_RGB.2,
+                            alpha: new_alpha,
+                        };
+                    } else {
+                        commands.entity(entity).despawn();
+                        extra_bonus_timer.reset();
+                    }
                 }
             }
         }
@@ -541,10 +587,11 @@ fn collision_handler(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut collision_event_reader: EventReader<CollisionEvent>,
-    mut bonus: Query<(&mut Transform, Entity), With<Bonus>>,
+    mut bonus: Query<(&mut Transform, Entity, &Bonus)>,
     mut score: ResMut<Score>,
     mut game_state: ResMut<GameState>,
     mut border_query: Query<&mut Visibility, With<Border>>,
+    mut extra_bonus_timer: ResMut<ExtraBonusTimer>,
     border_set: Res<Option<BorderSet>>,
     snake: Query<Entity, With<Snake>>,
     queue: Query<Entity, With<Queue>>,
@@ -552,41 +599,76 @@ fn collision_handler(
     if let Some(event) = collision_event_reader.iter().next() {
         match event {
             CollisionEvent::Bonus(points) => {
-                // spawn a queue
-                commands
-                    .spawn()
-                    .insert(Queue)
-                    .insert_bundle(MaterialMesh2dBundle {
-                        mesh: meshes
-                            .add(Mesh::from(shape::Quad {
-                                size: SNAKE_DIMENSIONS,
-                                ..default()
-                            }))
-                            .into(),
-                        transform: Transform::default().with_translation(Vec3::new(
-                            MIN_SCREEN_WIDTH,
-                            MIN_SCREEN_HEIGHT,
-                            0f32,
-                        )),
-                        material: materials.add(ColorMaterial::from(Color::GRAY)),
-                        ..default()
-                    })
-                    .insert(Collider);
+                for _ in 0..*points {
+                    // spawn a queue
+                    commands
+                        .spawn()
+                        .insert(Queue)
+                        .insert_bundle(MaterialMesh2dBundle {
+                            mesh: meshes
+                                .add(Mesh::from(shape::Quad {
+                                    size: SNAKE_DIMENSIONS,
+                                    ..default()
+                                }))
+                                .into(),
+                            transform: Transform::default().with_translation(Vec3::new(
+                                MIN_SCREEN_WIDTH,
+                                MIN_SCREEN_HEIGHT,
+                                0f32,
+                            )),
+                            material: materials.add(ColorMaterial::from(Color::GRAY)),
+                            ..default()
+                        })
+                        .insert(Collider);
+                }
                 score.0 += points;
-                let (mut bonus_position, _) = bonus.single_mut();
-                bonus_position.translation = border_set.unwrap().compute_random_bonus_position();
+                let mut extra_bonus_exists: bool = false;
+                for (mut bonus_position, bonus_entity, bonus) in bonus.iter_mut() {
+                    match bonus {
+                        Bonus::Normal if points == &1u32 => {
+                            bonus_position.translation =
+                                border_set.unwrap().compute_random_bonus_position();
+                        }
+                        Bonus::ExtraBonus if points == &5u32 => {
+                            extra_bonus_timer.reset();
+                            commands.entity(bonus_entity).despawn();
+                        }
+                        Bonus::ExtraBonus if points == &1u32 => {
+                            extra_bonus_exists = true;
+                        }
+                        _ => (),
+                    }
+                }
+                let mut rng = rand::thread_rng();
+                if points == &1 && !extra_bonus_exists && rng.gen_bool(CHANCE_OF_EXTRA_BONUS) {
+                    let extra_bonus_position = border_set.unwrap().compute_random_bonus_position();
+                    commands
+                        .spawn()
+                        .insert(Bonus::ExtraBonus)
+                        .insert_bundle(MaterialMesh2dBundle {
+                            mesh: meshes.add(Mesh::from(shape::Circle::default())).into(),
+                            transform: Transform::default()
+                                .with_scale(Vec3::splat(BONUS_DIAMETER))
+                                .with_translation(extra_bonus_position),
+                            material: materials.add(ColorMaterial::from(Color::YELLOW)),
+                            ..default()
+                        })
+                        .insert(Collider);
+                }
             }
             CollisionEvent::Border => {
                 let snake_entity = snake.single();
-                let (_, bonus_entity) = bonus.single();
                 commands.entity(snake_entity).despawn();
-                commands.entity(bonus_entity).despawn();
+                for (_, bonus_entity, _) in bonus.iter() {
+                    commands.entity(bonus_entity).despawn();
+                }
                 for queue_entity in queue.iter() {
                     commands.entity(queue_entity).despawn();
                 }
                 for mut border_visibility in border_query.iter_mut() {
                     border_visibility.is_visible = false;
                 }
+                extra_bonus_timer.reset();
                 *game_state = GameState::Over;
             }
         }
