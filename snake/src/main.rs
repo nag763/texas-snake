@@ -236,7 +236,8 @@ impl BorderSet {
                     material: materials.add(ColorMaterial::from(Color::WHITE)),
                     ..default()
                 })
-                .insert(Collider);
+                .insert(Collider)
+                .insert(Border);
         }
         init_game_components(commands, materials, meshes, *self);
     }
@@ -406,10 +407,11 @@ fn update_score(
     asset_server: Res<AssetServer>,
     score: Res<Score>,
     mut query: Query<(&mut Text, &mut Style), With<UserText>>,
+    bonus_position: Query<&Transform, With<Bonus>>,
 ) {
     let (mut text, mut style) = query.single_mut();
     let text_val = match *game_state {
-        GameState::Running => score.to_string(),
+        GameState::Running => format!("Score : {}", score.to_string()),
         GameState::Over => format!(
             "Game over\nYour score : {}\nPress 'R' to restart.",
             &score.to_string()
@@ -420,8 +422,8 @@ fn update_score(
     };
     let text_style_val = match *game_state {
         GameState::Running => TextStyle {
-            font_size: 10f32,
-            color: Color::BLACK,
+            font_size: 16f32,
+            color: Color::WHITE,
             font: asset_server.load(FONT_ASSET_NAME),
         },
         GameState::Over | GameState::Paused | GameState::Initialized => TextStyle {
@@ -435,8 +437,8 @@ fn update_score(
         GameState::Running => Style {
             position_type: PositionType::Absolute,
             position: UiRect {
-                bottom: Val::Px(1f32),
-                right: Val::Px(1f32),
+                bottom: Val::Px(10f32),
+                right: Val::Px(10f32),
                 ..default()
             },
             justify_content: JustifyContent::Center,
@@ -448,9 +450,15 @@ fn update_score(
             justify_content: JustifyContent::Center,
             ..default()
         },
-        GameState::Paused | GameState::Initialized => Style {
+        GameState::Paused => Style {
             position_type: PositionType::Absolute,
             position: UiRect::all(Val::Px(100f32)),
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        GameState::Initialized => Style {
+            position_type: PositionType::Absolute,
+            position: UiRect::all(Val::Px(120f32)),
             justify_content: JustifyContent::Center,
             ..default()
         },
@@ -536,6 +544,7 @@ fn collision_handler(
     mut bonus: Query<(&mut Transform, Entity), With<Bonus>>,
     mut score: ResMut<Score>,
     mut game_state: ResMut<GameState>,
+    mut border_query: Query<&mut Visibility, With<Border>>,
     border_set: Res<Option<BorderSet>>,
     snake: Query<Entity, With<Snake>>,
     queue: Query<Entity, With<Queue>>,
@@ -575,6 +584,9 @@ fn collision_handler(
                 for queue_entity in queue.iter() {
                     commands.entity(queue_entity).despawn();
                 }
+                for mut border_visibility in border_query.iter_mut() {
+                    border_visibility.is_visible = false;
+                }
                 *game_state = GameState::Over;
             }
         }
@@ -588,18 +600,28 @@ fn handle_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut score: ResMut<Score>,
     mut query: Query<&mut Snake>,
+    mut border_query: Query<&mut Visibility, With<Border>>,
     mut game_state: ResMut<GameState>,
     border_set: Res<Option<BorderSet>>,
 ) {
     if keyboard_input.any_just_pressed([KeyCode::Space, KeyCode::P]) {
         if *game_state == GameState::Paused {
+            for mut visibility in border_query.iter_mut() {
+                visibility.is_visible = true;
+            }
             *game_state = GameState::Running;
         } else if *game_state == GameState::Running {
+            for mut visibility in border_query.iter_mut() {
+                visibility.is_visible = false;
+            }
             *game_state = GameState::Paused;
         }
         return;
     }
     if *game_state == GameState::Over && keyboard_input.just_pressed(KeyCode::R) {
+        for mut visibility in border_query.iter_mut() {
+            visibility.is_visible = true;
+        }
         init_game_components(commands, materials, meshes, border_set.unwrap());
         score.0 = 0;
         *game_state = GameState::Ready;
