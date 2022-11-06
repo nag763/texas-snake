@@ -8,7 +8,7 @@ use bevy::{
     time::{FixedTimestep, Stopwatch},
 };
 
-const APP_TITLE : &str = "TI Snake";
+const APP_TITLE: &str = "TI Snake";
 
 /// How many times per seconds the system does an action.
 const TIME_STEP: f64 = 0.02;
@@ -44,7 +44,7 @@ const HOVERED_BUTTON: Color = Color::GRAY;
 
 const CHANCE_OF_EXTRA_BONUS: f64 = 0.10f64;
 const EXTRA_BONUS_RGB: (f32, f32, f32) = (202f32 / 256f32, 138f32 / 256f32, 4f32 / 265f32);
-const TIME_FOR_BONUS : f32 = 10f32;
+const TIME_FOR_BONUS: f32 = 10f32;
 
 #[derive(Default, Debug, Eq, PartialEq, Copy, Clone)]
 enum GameState {
@@ -307,7 +307,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn_bundle(Camera2dBundle::default());
     commands
         .spawn_bundle(
-            TextBundle::from_sections([TextSection::default()]).with_style(Style::default()),
+            TextBundle::from_sections([TextSection::default()])
+                .with_style(Style::default())
+                .with_text_alignment(TextAlignment::CENTER),
         )
         .insert(UserText);
     for border_set_variant in BorderSet::iterator() {
@@ -426,7 +428,7 @@ fn update_score(
 ) {
     let (mut text, mut style) = query.single_mut();
     let text_val = match *game_state {
-        GameState::Running => format!("Score : {}", score.to_string()),
+        GameState::Running => format!("Score : {}", **score),
         GameState::Over => format!(
             "Game over\nYour score : {}\nPress 'R' to restart.",
             &score.to_string()
@@ -457,24 +459,23 @@ fn update_score(
                 ..default()
             },
             justify_content: JustifyContent::Center,
+            overflow: Overflow::Hidden,
             ..default()
         },
-        GameState::Over => Style {
-            position_type: PositionType::Absolute,
-            position: UiRect::all(Val::Px(170f32)),
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-        GameState::Paused => Style {
-            position_type: PositionType::Absolute,
-            position: UiRect::all(Val::Px(100f32)),
+        GameState::Paused | GameState::Over => Style {
+            margin: UiRect::all(Val::Auto),
+            align_items: AlignItems::Center,
+            align_self: AlignSelf::Center,
             justify_content: JustifyContent::Center,
             ..default()
         },
         GameState::Initialized => Style {
             position_type: PositionType::Absolute,
-            position: UiRect::all(Val::Px(120f32)),
-            justify_content: JustifyContent::Center,
+            position: UiRect {
+                top: Val::Px(MAX_SCREEN_HEIGHT / 3f32),
+                left: Val::Px(MAX_SCREEN_WIDTH / 2f32),
+                ..default()
+            },
             ..default()
         },
         GameState::Ready => Style {
@@ -567,8 +568,8 @@ fn extra_bonus_timeout(
                     extra_bonus_timer.tick(time.delta());
                     let elapsed_secs = extra_bonus_timer.elapsed_secs();
                     if elapsed_secs < TIME_FOR_BONUS {
-                        let new_alpha = 1f32 - elapsed_secs/TIME_FOR_BONUS;
-                        let mut color_mat = materials.get_mut(&material).unwrap();
+                        let new_alpha = 1f32 - elapsed_secs / TIME_FOR_BONUS;
+                        let mut color_mat = materials.get_mut(material).unwrap();
                         color_mat.color = Color::Rgba {
                             red: EXTRA_BONUS_RGB.0,
                             green: EXTRA_BONUS_RGB.1,
