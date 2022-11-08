@@ -56,6 +56,12 @@ enum GameState {
     Over,
 }
 
+impl GameState {
+    fn are_borders_visible(&self) -> bool {
+        matches!(self, Self::Running | Self::Ready)
+    }
+}
+
 /// The snake direction in a 2D plan
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum SnakeDirection {
@@ -285,17 +291,19 @@ fn main() {
         .add_startup_system(window_resize_system)
         .add_system(update_score)
         .add_system(button_system)
+        .add_system(handle_game_state_commands)
+        .add_system(compute_borders_visibility)
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TIME_STEP))
                 .with_system(check_collisions)
-                .with_system(handle_input)
-                .with_system(extra_bonus_timeout.before(handle_input))
-                .with_system(move_snake.before(handle_input))
+                .with_system(handle_snake_direction_input)
+                .with_system(extra_bonus_timeout.before(handle_snake_direction_input))
+                .with_system(move_snake.before(handle_snake_direction_input))
                 .with_system(move_queue.before(move_snake))
                 .with_system(
                     collision_handler
-                        .before(handle_input)
+                        .before(handle_snake_direction_input)
                         .after(check_collisions),
                 ),
         )
@@ -679,41 +687,43 @@ fn collision_handler(
     }
 }
 
-fn handle_input(
-    commands: Commands,
+fn handle_game_state_commands(
+    keyboard_input: Res<Input<KeyCode>>,
+    border_set: Res<Option<BorderSet>>,
     materials: ResMut<Assets<ColorMaterial>>,
     meshes: ResMut<Assets<Mesh>>,
-    keyboard_input: Res<Input<KeyCode>>,
     mut score: ResMut<Score>,
-    mut query: Query<&mut Snake>,
-    mut border_query: Query<&mut Visibility, With<Border>>,
+    commands: Commands,
     mut game_state: ResMut<GameState>,
-    border_set: Res<Option<BorderSet>>,
 ) {
-    if keyboard_input.any_just_pressed([KeyCode::Space, KeyCode::P]) {
-        if *game_state == GameState::Paused {
-            for mut visibility in border_query.iter_mut() {
-                visibility.is_visible = true;
-            }
-            *game_state = GameState::Running;
-        } else if *game_state == GameState::Running {
-            for mut visibility in border_query.iter_mut() {
-                visibility.is_visible = false;
-            }
-            *game_state = GameState::Paused;
-        }
-        return;
-    }
     if *game_state == GameState::Over && keyboard_input.just_pressed(KeyCode::R) {
-        for mut visibility in border_query.iter_mut() {
-            visibility.is_visible = true;
-        }
         init_game_components(commands, materials, meshes, border_set.unwrap());
         score.0 = 0;
         *game_state = GameState::Ready;
-        return;
+    } else if keyboard_input.any_just_pressed([KeyCode::Space, KeyCode::P]) {
+        if *game_state == GameState::Paused {
+            *game_state = GameState::Running;
+        } else if *game_state == GameState::Running {
+            *game_state = GameState::Paused;
+        }
     }
+}
 
+fn compute_borders_visibility(
+    game_state: ResMut<GameState>,
+    mut border_query: Query<&mut Visibility, With<Border>>,
+) {
+    let borders_visibility = game_state.are_borders_visible();
+    for mut visibility in border_query.iter_mut() {
+        visibility.is_visible = borders_visibility;
+    }
+}
+
+fn handle_snake_direction_input(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut game_state: ResMut<GameState>,
+    mut query: Query<&mut Snake>,
+) {
     let mut new_direction: Option<SnakeDirection> = None;
 
     if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
