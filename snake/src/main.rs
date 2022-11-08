@@ -1,3 +1,9 @@
+pub mod common;
+pub mod resources;
+
+use common::*;
+use resources::prelude::*;
+
 use rand::Rng;
 use std::fmt;
 
@@ -7,60 +13,6 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
     time::{FixedTimestep, Stopwatch},
 };
-
-const APP_TITLE: &str = "TI Snake";
-
-/// How many times per seconds the system does an action.
-const TIME_STEP: f64 = 0.02;
-
-/// The screen height.
-const SCREEN_HEIGHT: f32 = 480.;
-const MAX_SCREEN_HEIGHT: f32 = SCREEN_HEIGHT / 2.;
-const MIN_SCREEN_HEIGHT: f32 = -MAX_SCREEN_HEIGHT;
-
-/// The screen width.
-const SCREEN_WIDTH: f32 = 640.;
-const MAX_SCREEN_WIDTH: f32 = SCREEN_WIDTH / 2.;
-const MIN_SCREEN_WIDTH: f32 = -MAX_SCREEN_WIDTH;
-
-/// The snake head size, same size for each queue member
-const SNAKE_SIZE: f32 = 10f32;
-/// The snake dimensions
-const SNAKE_DIMENSIONS: Vec2 = Vec2::splat(SNAKE_SIZE);
-/// The snake speed
-const SNAKE_SPEED_FACTOR: f32 = (SNAKE_SIZE + 5f32) * 0.40;
-
-/// The bonus diameter
-const BONUS_DIAMETER: f32 = 10f32;
-
-/// The size of each border
-const BORDER_SIZE: f32 = 15f32;
-
-/// The font name
-const FONT_ASSET_NAME: &str = "score_font.otf";
-
-const NORMAL_BUTTON: Color = Color::DARK_GRAY;
-const HOVERED_BUTTON: Color = Color::GRAY;
-
-const CHANCE_OF_EXTRA_BONUS: f64 = 0.10f64;
-const EXTRA_BONUS_RGB: (f32, f32, f32) = (202f32 / 256f32, 138f32 / 256f32, 4f32 / 265f32);
-const TIME_FOR_BONUS: f32 = 10f32;
-
-#[derive(Default, Debug, Eq, PartialEq, Copy, Clone)]
-enum GameState {
-    #[default]
-    Initialized,
-    Ready,
-    Running,
-    Paused,
-    Over,
-}
-
-impl GameState {
-    fn are_borders_visible(&self) -> bool {
-        matches!(self, Self::Running | Self::Ready)
-    }
-}
 
 /// The snake direction in a 2D plan
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -126,9 +78,6 @@ struct Border;
 /// It can either be a bonus, or a border.
 #[derive(Debug, Default, Component)]
 struct Collider;
-
-#[derive(Component, Default, Deref, DerefMut, Debug)]
-struct Score(u32);
 
 #[derive(Component, Debug, Eq, PartialEq, Copy, Clone)]
 enum BorderSet {
@@ -285,9 +234,11 @@ fn main() {
         .init_resource::<GameState>()
         .init_resource::<Option<BorderSet>>()
         .init_resource::<ExtraBonusTimer>()
+        .init_resource::<AppFont>()
         .add_plugins(DefaultPlugins)
         .add_event::<CollisionEvent>()
         .add_startup_system(setup)
+        .add_startup_system(load_assets)
         .add_startup_system(window_resize_system)
         .add_system(update_score)
         .add_system(button_system)
@@ -308,6 +259,11 @@ fn main() {
                 ),
         )
         .run();
+}
+
+fn load_assets(asset_server: Res<AssetServer>, mut app_font: ResMut<AppFont>) {
+    let font: Handle<Font> = asset_server.load(FONT_ASSET_NAME);
+    **app_font = Some(font);
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -430,70 +386,15 @@ fn button_system(
 /// Updates the displayed score on the screen.                  
 fn update_score(
     game_state: Res<GameState>,
-    asset_server: Res<AssetServer>,
+    app_font: Res<AppFont>,
     score: Res<Score>,
     mut query: Query<(&mut Text, &mut Style), With<UserText>>,
 ) {
     let (mut text, mut style) = query.single_mut();
-    let text_val = match *game_state {
-        GameState::Running => format!("Score : {}", **score),
-        GameState::Over => format!(
-            "Game over\nYour score : {}\nPress 'R' to restart.",
-            &score.to_string()
-        ),
-        GameState::Paused => "The game has been paused\nPress 'P' to resume.".into(),
-        GameState::Ready => String::default(),
-        GameState::Initialized => "Choose a border set".into(),
-    };
-    let text_style_val = match *game_state {
-        GameState::Running => TextStyle {
-            font_size: 16f32,
-            color: Color::WHITE,
-            font: asset_server.load(FONT_ASSET_NAME),
-        },
-        GameState::Over | GameState::Paused | GameState::Initialized => TextStyle {
-            font_size: 30f32,
-            color: Color::WHITE,
-            font: asset_server.load(FONT_ASSET_NAME),
-        },
-        GameState::Ready => TextStyle::default(),
-    };
-    let style_val = match *game_state {
-        GameState::Running => Style {
-            position_type: PositionType::Absolute,
-            position: UiRect {
-                bottom: Val::Px(10f32),
-                right: Val::Px(10f32),
-                ..default()
-            },
-            justify_content: JustifyContent::Center,
-            overflow: Overflow::Hidden,
-            ..default()
-        },
-        GameState::Paused | GameState::Over => Style {
-            margin: UiRect::all(Val::Auto),
-            align_items: AlignItems::Center,
-            align_self: AlignSelf::Center,
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-        GameState::Initialized => Style {
-            position_type: PositionType::Absolute,
-            position: UiRect {
-                top: Val::Px(MAX_SCREEN_HEIGHT / 3f32),
-                left: Val::Px(MAX_SCREEN_WIDTH / 2f32),
-                ..default()
-            },
-            ..default()
-        },
-        GameState::Ready => Style {
-            display: Display::None,
-            ..default()
-        },
-    };
-    text.sections[0].value = text_val;
-    text.sections[0].style = text_style_val;
-    *style = style_val;
+    if let Some(font) = &**app_font {
+        *text = game_state.get_score_text(*score, font.clone());
+        *style = game_state.get_score_style();
+    }
 }
 
 /// The movement of snake per TIME_STEP applied to the ball.
