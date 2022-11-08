@@ -12,6 +12,7 @@ use bevy::{
     sprite::collide_aabb::collide,
     sprite::MaterialMesh2dBundle,
     time::{FixedTimestep, Stopwatch},
+    app::AppExit
 };
 
 /// The snake direction in a 2D plan
@@ -389,11 +390,16 @@ fn update_score(
     app_font: Res<AppFont>,
     score: Res<Score>,
     mut query: Query<(&mut Text, &mut Style), With<UserText>>,
+    mut exit: EventWriter<AppExit>
 ) {
     let (mut text, mut style) = query.single_mut();
     if let Some(font) = &**app_font {
         *text = game_state.get_score_text(*score, font.clone());
         *style = game_state.get_score_style();
+    } else {
+        eprintln!("Assets were not correctly loaded on startup");
+        exit.send(AppExit);
+
     }
 }
 
