@@ -3,21 +3,36 @@ use super::score::Score;
 use crate::common::*;
 use bevy::prelude::*;
 
+/// The game state defines the current status of the application.
+///
+/// This is handful in case we need to spawn or despawn some entities,
+/// or load resources before others.
 #[derive(Default, Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum GameState {
+    /// The initial state : the app is started and a user choice is awaited.
     #[default]
     Initialized,
+    /// The ready state : the border set is defined, user input waited.
     Ready,
+    /// The running state: the user is playing.
     Running,
+    /// The paused state:  the user has paused the system, and his input
+    /// is waited in order to resume.
     Paused,
+    /// Game over ! User lost, his input is waited in order to
+    /// either restart with the same border set or another one.
     Over,
 }
 
 impl GameState {
+    /// Returns whether borders are visible or not.
+    ///
+    /// Useful when we need to show text, as borders can overflow the text.
     pub fn are_borders_visible(&self) -> bool {
         matches!(self, Self::Running | Self::Ready)
     }
 
+    /// Returns the text that has to be displayed to the user.
     fn get_score_text_value(&self, score: &str) -> String {
         match self {
             GameState::Running => format!("Score : {}", score),
@@ -28,6 +43,7 @@ impl GameState {
         }
     }
 
+    /// Returns the style of the text displayed to the user.
     fn get_score_text_style(&self, font: Handle<Font>) -> TextStyle {
         match &self {
             GameState::Running => TextStyle {
@@ -44,6 +60,7 @@ impl GameState {
         }
     }
 
+    /// Returns the style of the score.
     pub fn get_score_style(&self) -> Style {
         match &self {
             GameState::Running => Style {
@@ -80,6 +97,7 @@ impl GameState {
         }
     }
 
+    /// Returns the text of the score.
     pub fn get_score_text(&self, score: Score, font: Handle<Font>) -> Text {
         let text_style: TextStyle = self.get_score_text_style(font);
         Text::from_section(self.get_score_text_value(&score.to_string()), text_style)

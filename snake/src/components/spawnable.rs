@@ -8,12 +8,16 @@ use bevy::{
     transform::components::Transform,
 };
 
+/// The spawnable trait is a trait used to make easier the spawn of components.
+///
+/// It allows overall to rather stock the spawn mechanism along the source code of the component
+/// rather than the systems.
 pub trait Spawnable<T>
 where
     Self: Component + Copy,
     T: Bundle,
 {
-    /// A bonus once collide
+    /// Returns the bundle of the component.
     fn get_bundle(
         &self,
         transform: Transform,
@@ -21,6 +25,7 @@ where
         meshes: &mut ResMut<Assets<Mesh>>,
     ) -> T;
 
+    /// Spawns the component.
     fn spawn(
         &self,
         position: Transform,
@@ -34,5 +39,7 @@ where
         Self::additional_systems(&mut commands);
     }
 
+    /// Additional systems, can be handful if for instance,
+    /// there is a need to add another component to the bundle.
     fn additional_systems(commands: &mut EntityCommands);
 }

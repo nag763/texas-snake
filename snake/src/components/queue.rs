@@ -4,7 +4,7 @@ use crate::common::*;
 
 use super::prelude::{Collider, Spawnable};
 
-/// The snake's queue.
+/// The queue grows as long as the snake eats bonuses.
 #[derive(Debug, Component, Default, Copy, Clone)]
 pub struct Queue;
 

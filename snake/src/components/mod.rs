@@ -2,14 +2,14 @@ pub mod snake;
 
 pub mod border {
     use bevy::prelude::*;
-    /// The limit of the game.
+    /// A border is a non traversable component that will result in a game over once collided.
     #[derive(Debug, Default, Component)]
     pub struct Border;
 }
 
 pub mod collider {
     use bevy::prelude::*;
-    /// A collider is something the snake can't go through.
+    /// A collider is something the snake can't go through without triggering an event.
     ///
     /// It can either be a bonus, or a border.
     #[derive(Debug, Default, Component)]

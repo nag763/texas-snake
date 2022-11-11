@@ -5,11 +5,18 @@ use bevy::{prelude::*, sprite::collide_aabb::collide, sprite::MaterialMesh2dBund
 use rand::Rng;
 use std::fmt;
 
+/// A border set is a preset of borders that will be spawned during the game.
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Component)]
 pub enum BorderSet {
+    /// Borders are the screen limit.
     Screen,
+    /// Borders are a cross that cross each others
+    /// in the middle of the screen.
     Cross,
+    /// One single border that is the width of the screen and
+    /// located in the middle of the screeen.
     Horizontal,
+    /// Same as horizontal, but with the height of the screen.
     Vertical,
 }
 
@@ -20,6 +27,7 @@ impl fmt::Display for BorderSet {
 }
 
 impl BorderSet {
+    /// Returns all the possible border sets.
     pub fn iterator() -> impl Iterator<Item = Self> {
         [
             BorderSet::Screen,
@@ -30,6 +38,7 @@ impl BorderSet {
         .into_iter()
     }
 
+    /// Defines the possible borders for each border set.
     pub fn get_borders(&self) -> Vec<Transform> {
         match self {
             BorderSet::Screen => vec![
@@ -71,13 +80,19 @@ impl BorderSet {
         }
     }
 
+    /// Compute the random non collidable position for the given border set.
+    ///
+    /// This is useful when you need to spawn a bonus randomly for instance.
     pub fn compute_random_bonus_position(&self) -> Vec3 {
         let mut rng = rand::thread_rng();
         let bonus_dimensions = Vec2::splat(BONUS_DIAMETER);
+        // We loop until a bonus position is returned
         'generator: loop {
+            // It has to be spawned within the screen limits ...
             let x = rng.gen_range(MIN_SCREEN_WIDTH..MAX_SCREEN_WIDTH);
             let y = rng.gen_range(MIN_SCREEN_HEIGHT..MAX_SCREEN_HEIGHT);
             let random_position = Vec3::new(x, y, 0f32);
+            // ... and checked that it doesn't collide with any of the borders.
             for border in self.get_borders() {
                 let border_dimensions = Vec2::new(border.scale.x, border.scale.y);
                 if collide(
@@ -95,6 +110,9 @@ impl BorderSet {
         }
     }
 
+    /// The snake initial position depends of the border set,
+    /// this methods returns a good snake position for each of
+    /// the border set.
     pub fn get_snake_initial_position(&self) -> Vec3 {
         match self {
             BorderSet::Screen => Vec3::default(),
@@ -106,6 +124,7 @@ impl BorderSet {
         }
     }
 
+    /// Spawn the borders in the given app.
     pub fn spawn_borders(
         &self,
         mut commands: Commands,

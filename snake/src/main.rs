@@ -64,7 +64,6 @@ fn main() {
                         .after(check_collisions),
                 ),
         )
-
         .add_system_set(
             SystemSet::on_enter(GameState::Paused).with_system(compute_borders_visibility),
         )
@@ -73,6 +72,7 @@ fn main() {
         .run();
 }
 
+/// Loads the assets at startup.
 fn load_assets(asset_server: Res<AssetServer>, mut app_font: ResMut<AppFont>) {
     let font: Handle<Font> = asset_server.load(FONT_ASSET_NAME);
     **app_font = Some(font);
@@ -90,6 +90,7 @@ fn setup(mut commands: Commands) {
         .insert(UserText);
 }
 
+/// Spawn the border picker buttons.
 fn spawn_border_set_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
     for border_set_variant in BorderSet::iterator() {
         commands
@@ -119,6 +120,7 @@ fn spawn_border_set_buttons(mut commands: Commands, asset_server: Res<AssetServe
     }
 }
 
+/// Init the game components, allowing the user to interact with the system.
 fn init_game_components(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -160,6 +162,7 @@ fn window_resize_system(mut windows: ResMut<Windows>) {
     window.set_resolution(SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
+/// The interactions with the button system.
 fn border_set_choose_system(
     mut button_query: Query<(&Interaction, &mut UiColor, &BorderSet)>,
     mut game_state: ResMut<State<GameState>>,
@@ -168,6 +171,8 @@ fn border_set_choose_system(
     for (interaction, mut color, button) in button_query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
+                // Each button corresponds to a border set, so we will
+                // set the clicked border set as a resource
                 *border_set = Some(*button);
                 game_state.set(GameState::Ready).unwrap();
                 break;
@@ -182,6 +187,7 @@ fn border_set_choose_system(
     }
 }
 
+/// Deletes the buttons, once they aren't useful anymore, and once a border set is picked.
 fn delete_buttons(mut commands: Commands, mut button_query: Query<Entity, With<BorderSet>>) {
     for button_entity in button_query.iter_mut() {
         commands.entity(button_entity).despawn_recursive();
@@ -213,9 +219,11 @@ fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>) {
         let translation_diff = direction.into_translation() * SNAKE_SPEED_FACTOR;
         snake.last_position = transform.translation;
         let mut new_translation = transform.translation + translation_diff;
+        // Upper or lower component translation when there is no border
         if MAX_SCREEN_WIDTH < f32::abs(new_translation.x) {
             new_translation.x = -MAX_SCREEN_WIDTH * new_translation.x.signum();
         }
+        // Upper or lower component translation when there is no border
         if MAX_SCREEN_HEIGHT < f32::abs(new_translation.y) {
             new_translation.y = -MAX_SCREEN_HEIGHT * new_translation.y.signum();
         }
@@ -223,6 +231,7 @@ fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>) {
     }
 }
 
+/// Moves the queue of the snake, where n+1 position = n position and 0 = snake's last position
 fn move_queue(mut query: Query<&mut Transform, With<Queue>>, snake: Query<&Snake>) {
     let snake = snake.single();
     let mut last_position = snake.last_position;
@@ -231,6 +240,7 @@ fn move_queue(mut query: Query<&mut Transform, With<Queue>>, snake: Query<&Snake
     }
 }
 
+/// Check whether the snake has collided anything, a bonus or a border.
 fn check_collisions(
     snake: Query<&Transform, With<Snake>>,
     colliders: Query<(&Transform, Option<&Bonus>), With<Collider>>,
@@ -247,18 +257,15 @@ fn check_collisions(
         );
         if collide.is_some() {
             if let Some(bonus) = maybe_bonus {
-                let points = match bonus {
-                    Bonus::ExtraBonus => 5,
-                    Bonus::Normal => 1,
-                };
-                collision_event_writer.send(CollisionEvent::Bonus(points));
+                collision_event_writer.send(CollisionEvent::Bonus(bonus.get_points()));
             } else {
+                // If the collider isn't a bonus, it is a border.
                 collision_event_writer.send_default();
             }
         }
     }
 }
-
+/// Timeouts the extra bonus if it is on the screen.
 fn extra_bonus_timeout(
     mut commands: Commands,
     bonus_query: Query<(Entity, &Handle<ColorMaterial>, &Bonus)>,
@@ -266,12 +273,15 @@ fn extra_bonus_timeout(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut extra_bonus_timer: ResMut<ExtraBonusTimer>,
 ) {
+    // We rather iter here, since we do not know whether an extra bonus is on the screen or
+    // not. However, only one extra bonus should be on the screen.
     for (entity, material, bonus) in bonus_query.iter() {
         match bonus {
             Bonus::Normal => (),
             Bonus::ExtraBonus => {
                 extra_bonus_timer.tick(time.delta());
                 let elapsed_secs = extra_bonus_timer.elapsed_secs();
+                // While the extra bonus is on the screen, we fade it out.
                 if elapsed_secs < TIME_FOR_BONUS {
                     let new_alpha = 1f32 - elapsed_secs / TIME_FOR_BONUS;
                     let mut color_mat = materials.get_mut(material).unwrap();
@@ -281,6 +291,7 @@ fn extra_bonus_timeout(
                         blue: EXTRA_BONUS_RGB.2,
                         alpha: new_alpha,
                     };
+                // If the time limit has been reached, we despawn the extra bonus.
                 } else {
                     commands.entity(entity).despawn();
                     extra_bonus_timer.reset();
@@ -290,6 +301,7 @@ fn extra_bonus_timeout(
     }
 }
 
+/// Every collision event handling.
 fn collision_handler(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -306,9 +318,12 @@ fn collision_handler(
 ) {
     if let Some(event) = collision_event_reader.iter().next() {
         match event {
+            // If a bonus is collided, we increase the length of the queue, and
+            // others subsequent actions.
             CollisionEvent::Bonus(points) => {
                 for _ in 0..*points {
-                    // spawn a queue
+                    // The queue is spawned out of the screen, and then moved
+                    // by the systems.
                     Queue::default().spawn(
                         Transform::default().with_translation(Vec3::new(
                             SCREEN_WIDTH,
@@ -320,18 +335,23 @@ fn collision_handler(
                         &mut meshes,
                     );
                 }
-                score.0 += points;
+                **score += points;
                 let mut extra_bonus_exists: bool = false;
+                // For each bonus, given the number of points, we proceed to ...
                 for (mut bonus_position, bonus_entity, bonus) in bonus.iter_mut() {
                     match bonus {
+                        // Change its position if it a normal one that has been touched.
                         Bonus::Normal if points == &1u32 => {
                             bonus_position.translation =
                                 border_set.unwrap().compute_random_bonus_position();
                         }
+                        // Despawn it if it is an extra bonus.
                         Bonus::ExtraBonus if points == &5u32 => {
                             extra_bonus_timer.reset();
                             commands.entity(bonus_entity).despawn();
                         }
+                        // If the normal bonus is touched while the extra bonus is touched, we don't
+                        // do anything.
                         Bonus::ExtraBonus if points == &1u32 => {
                             extra_bonus_exists = true;
                         }
@@ -339,6 +359,7 @@ fn collision_handler(
                     }
                 }
                 let mut rng = rand::thread_rng();
+                // If no extra bonus has been touched and none are on screen atm, we roll the dice
                 if points == &1 && !extra_bonus_exists && rng.gen_bool(CHANCE_OF_EXTRA_BONUS) {
                     let extra_bonus_position = border_set.unwrap().compute_random_bonus_position();
                     Bonus::ExtraBonus.spawn(
@@ -351,6 +372,7 @@ fn collision_handler(
                     );
                 }
             }
+            // If a border is collided, we despawn all the game components
             CollisionEvent::Border => {
                 let snake_entity = snake.single();
                 commands.entity(snake_entity).despawn();
@@ -370,6 +392,7 @@ fn collision_handler(
     }
 }
 
+/// Enter in pause when the game is running.
 fn enter_pause(
     mut keyboard_input: ResMut<Input<KeyCode>>,
     mut game_state: ResMut<State<GameState>>,
@@ -381,6 +404,7 @@ fn enter_pause(
     }
 }
 
+/// Resume the game when the game is paused.
 fn resume_game(
     mut keyboard_input: ResMut<Input<KeyCode>>,
     mut game_state: ResMut<State<GameState>>,
@@ -392,6 +416,7 @@ fn resume_game(
     }
 }
 
+/// Restarts the game when it is over.
 fn restart_game(
     keyboard_input: Res<Input<KeyCode>>,
     mut score: ResMut<Score>,
@@ -406,6 +431,7 @@ fn restart_game(
     }
 }
 
+/// Changes the border visibility when the game is paused or resumed.
 fn compute_borders_visibility(
     game_state: ResMut<State<GameState>>,
     mut border_query: Query<&mut Visibility, With<Border>>,
@@ -416,6 +442,7 @@ fn compute_borders_visibility(
     }
 }
 
+/// Set the first direction of the snake, when the game is initiallized.
 fn set_first_direction(
     keyboard_input: Res<Input<KeyCode>>,
     mut game_state: ResMut<State<GameState>>,
@@ -443,6 +470,7 @@ fn set_first_direction(
     }
 }
 
+/// Handle a snake direction change on input.
 fn handle_snake_direction_input(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Snake>) {
     let mut new_direction: Option<SnakeDirection> = None;
 
