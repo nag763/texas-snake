@@ -1,6 +1,5 @@
 use crate::common::*;
 use crate::components::prelude::*;
-use crate::init_game_components;
 use bevy::{prelude::*, sprite::collide_aabb::collide, sprite::MaterialMesh2dBundle};
 
 use rand::Rng;
@@ -130,6 +129,5 @@ impl BorderSet {
                 .insert(Collider)
                 .insert(Border);
         }
-        init_game_components(commands, materials, meshes, *self);
     }
 }

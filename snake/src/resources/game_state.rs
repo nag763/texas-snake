@@ -3,7 +3,7 @@ use super::score::Score;
 use crate::common::*;
 use bevy::prelude::*;
 
-#[derive(Default, Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Default, Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum GameState {
     #[default]
     Initialized,
@@ -21,7 +21,7 @@ impl GameState {
     fn get_score_text_value(&self, score: &str) -> String {
         match self {
             GameState::Running => format!("Score : {}", score),
-            GameState::Over => format!("Game over\nYour score : {}\nPress 'R' to restart.", score),
+            GameState::Over => format!("Game over\nYour score : {}\nPress 'R' to restart.\nPress 'ESC' to choose another border set.", score),
             GameState::Paused => "The game has been paused\nPress 'P' to resume.".into(),
             GameState::Ready => String::default(),
             GameState::Initialized => "Choose a border set".into(),
