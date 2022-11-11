@@ -1,7 +1,12 @@
-use bevy::{prelude::*, app::AppExit};
+use bevy::{app::AppExit, prelude::*};
 
-use crate::{components::prelude::{Snake, SnakeDirection, Bonus, Spawnable}, resources::{game_state::GameState, border_set::BorderSet}, common::BONUS_DIAMETER};
+use crate::{
+    common::BONUS_DIAMETER,
+    components::prelude::{Bonus, Snake, Spawnable},
+    resources::{border_set::BorderSet, game_state::GameState},
+};
 
+use super::prelude::get_direction_from_input;
 
 /// Init the game components, allowing the user to interact with the system.
 pub fn init_game_components(
@@ -38,29 +43,14 @@ pub fn init_game_components(
     }
 }
 
-
 /// Set the first direction of the snake, when the game is initiallized.
 pub fn set_first_direction(
     keyboard_input: Res<Input<KeyCode>>,
     mut game_state: ResMut<State<GameState>>,
     mut query: Query<&mut Snake>,
 ) {
-    let mut new_direction: Option<SnakeDirection> = None;
 
-    if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
-        new_direction = Some(SnakeDirection::Right);
-    }
-    if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Q]) {
-        new_direction = Some(SnakeDirection::Left);
-    }
-    if keyboard_input.any_pressed([KeyCode::Up, KeyCode::Z]) {
-        new_direction = Some(SnakeDirection::Up);
-    }
-    if keyboard_input.any_pressed([KeyCode::Down, KeyCode::S]) {
-        new_direction = Some(SnakeDirection::Down);
-    }
-
-    if let Some(new_direction) = new_direction {
+    if let Some(new_direction) = get_direction_from_input(keyboard_input) {
         let mut snake = query.single_mut();
         snake.direction = Some(new_direction);
         game_state.set(GameState::Running).unwrap();

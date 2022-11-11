@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::resources::{score::Score, game_state::GameState};
+use crate::resources::{game_state::GameState, score::Score};
 
 /// Restarts the game when it is over.
 pub fn restart_game(

@@ -1,7 +1,13 @@
-
 use bevy::prelude::*;
 
-use crate::{common::*, components::prelude::{Snake, Queue, Bonus, Collider, SnakeDirection}, CollisionEvent, ExtraBonusTimer, resources::game_state::GameState};
+use crate::{
+    common::*,
+    components::prelude::{Bonus, Collider, Queue, Snake},
+    resources::game_state::GameState,
+    CollisionEvent, ExtraBonusTimer,
+};
+
+use super::prelude::{change_system_if_inputs_pressed, get_direction_from_input};
 
 /// The movement of snake per TIME_STEP applied to the ball.
 pub fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>) {
@@ -93,40 +99,24 @@ pub fn extra_bonus_timeout(
 }
 
 /// Enter in pause when the game is running.
-pub fn enter_pause(
-    mut keyboard_input: ResMut<Input<KeyCode>>,
-    mut game_state: ResMut<State<GameState>>,
-) {
-    if keyboard_input.any_just_pressed([KeyCode::Space, KeyCode::P]) {
-        game_state.push(GameState::Paused).unwrap();
-        keyboard_input.reset(KeyCode::P);
-        keyboard_input.reset(KeyCode::Space);
-    }
+pub fn enter_pause(keyboard_input: ResMut<Input<KeyCode>>, game_state: ResMut<State<GameState>>) {
+    change_system_if_inputs_pressed(
+        GameState::Ready,
+        vec![KeyCode::P, KeyCode::Space],
+        keyboard_input,
+        game_state,
+    );
 }
 
 /// Handle a snake direction change on input.
-pub fn handle_snake_direction_input(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Snake>) {
-    let mut new_direction: Option<SnakeDirection> = None;
-
-    if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
-        new_direction = Some(SnakeDirection::Right);
-    }
-    if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Q]) {
-        new_direction = Some(SnakeDirection::Left);
-    }
-    if keyboard_input.any_pressed([KeyCode::Up, KeyCode::Z]) {
-        new_direction = Some(SnakeDirection::Up);
-    }
-    if keyboard_input.any_pressed([KeyCode::Down, KeyCode::S]) {
-        new_direction = Some(SnakeDirection::Down);
-    }
-
-    let mut snake = query.single_mut();
-    if let (Some(current_snake_direction), Some(new_direction_unwrapped)) =
-        (snake.direction, new_direction)
-    {
-        if !current_snake_direction.conflicts_with(new_direction_unwrapped) {
-            snake.direction = new_direction;
+pub fn handle_snake_direction_input(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<&mut Snake>,
+) {
+    if let Some(new_direction) = get_direction_from_input(keyboard_input) {
+        let mut snake = query.single_mut();
+        if !snake.direction.unwrap().conflicts_with(new_direction) {
+            snake.direction = Some(new_direction);
         }
     }
 }

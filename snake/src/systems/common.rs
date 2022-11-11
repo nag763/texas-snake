@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{resources::game_state::GameState, components::prelude::Border};
+use crate::{components::prelude::{Border, SnakeDirection}, resources::game_state::GameState};
 
 /// Changes the border visibility when the game is paused or resumed.
 pub fn compute_borders_visibility(
@@ -11,4 +11,37 @@ pub fn compute_borders_visibility(
     for mut visibility in border_query.iter_mut() {
         visibility.is_visible = borders_visibility;
     }
+}
+
+/// Change the current system to the target system if any of the keys
+/// passed in inputs are pressed.
+pub(crate) fn change_system_if_inputs_pressed(
+    target_state: GameState,
+    inputs: Vec<KeyCode>,
+    mut keyboard_input: ResMut<Input<KeyCode>>,
+    mut game_state: ResMut<State<GameState>>,
+) {
+    if keyboard_input.any_just_pressed(inputs.clone()) {
+        game_state.set(target_state).unwrap();
+        for input in inputs {
+            keyboard_input.reset(input);
+        }
+    }
+}
+
+pub (crate) fn get_direction_from_input(
+    keyboard_input: Res<Input<KeyCode>>) -> Option<SnakeDirection> {
+    if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
+        return Some(SnakeDirection::Right);
+    }
+    if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Q]) {
+        return Some(SnakeDirection::Left);
+    }
+    if keyboard_input.any_pressed([KeyCode::Up, KeyCode::Z]) {
+        return Some(SnakeDirection::Up);
+    }
+    if keyboard_input.any_pressed([KeyCode::Down, KeyCode::S]) {
+        return Some(SnakeDirection::Down);
+    }
+    None
 }

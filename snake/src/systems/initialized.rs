@@ -1,8 +1,7 @@
-use bevy::prelude::*;
 use crate::common::*;
 use crate::resources::border_set::BorderSet;
 use crate::resources::game_state::GameState;
-
+use bevy::prelude::*;
 
 /// Spawn the border picker buttons.
 pub fn spawn_border_set_buttons(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -33,7 +32,6 @@ pub fn spawn_border_set_buttons(mut commands: Commands, asset_server: Res<AssetS
             .insert(border_set_variant);
     }
 }
-
 
 /// The interactions with the button system.
 pub fn border_set_choose_system(

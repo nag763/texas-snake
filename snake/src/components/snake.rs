@@ -40,6 +40,27 @@ impl SnakeDirection {
             Self::Left => Vec3::new(-1., 0., 0.),
         }
     }
+
+}
+
+impl TryFrom<Input<KeyCode>> for SnakeDirection {
+    type Error = &'static str;
+
+    fn try_from(keyboard_input : Input<bevy::prelude::KeyCode>) -> Result<SnakeDirection, Self::Error> {
+        if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
+            return Ok(SnakeDirection::Right);
+        }
+        if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Q]) {
+            return Ok(SnakeDirection::Left);
+        }
+        if keyboard_input.any_pressed([KeyCode::Up, KeyCode::Z]) {
+            return Ok(SnakeDirection::Up);
+        }
+        if keyboard_input.any_pressed([KeyCode::Down, KeyCode::S]) {
+            return Ok(SnakeDirection::Down);
+        }
+        Err("No direction found")
+    }
 }
 
 /// The snake is the player.
