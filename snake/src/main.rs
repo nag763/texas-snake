@@ -1,212 +1,22 @@
 pub mod common;
+mod components;
 pub mod resources;
 
 use common::*;
+use components::prelude::*;
 use resources::prelude::*;
 
 use rand::Rng;
-use std::fmt;
 
 use bevy::{
+    app::AppExit,
     prelude::*,
     sprite::collide_aabb::collide,
-    sprite::MaterialMesh2dBundle,
     time::{FixedTimestep, Stopwatch},
-    app::AppExit
 };
-
-/// The snake direction in a 2D plan
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-enum SnakeDirection {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-impl SnakeDirection {
-    /// Get the conflictual direction.
-    ///
-    /// ie, going upward is impossible for the snake if he is already
-    /// going down.
-    fn get_conflictual_direction(&self) -> Self {
-        match self {
-            Self::Up => Self::Down,
-            Self::Down => Self::Up,
-            Self::Left => Self::Right,
-            Self::Right => Self::Left,
-        }
-    }
-
-    /// Returns whether the current position conflicts with another.
-    fn conflicts_with(&self, other: Self) -> bool {
-        self.get_conflictual_direction() == other
-    }
-
-    /// Returns the current direction as a translatable vec.
-    fn into_translation(self) -> Vec3 {
-        match self {
-            Self::Up => Vec3::new(0., 1., 0.),
-            Self::Down => Vec3::new(0., -1., 0.),
-            Self::Right => Vec3::new(1., 0., 0.),
-            Self::Left => Vec3::new(-1., 0., 0.),
-        }
-    }
-}
-
-/// The snake is the player.
-#[derive(Debug, Component, Default)]
-struct Snake {
-    /// The snake direction.
-    direction: Option<SnakeDirection>,
-    /// Its last position.
-    last_position: Vec3,
-}
 
 #[derive(Debug, Component)]
 struct UserText;
-
-/// The snake's queue.
-#[derive(Debug, Component)]
-struct Queue;
-
-/// The limit of the game.
-#[derive(Debug, Default, Component)]
-struct Border;
-
-/// A collider is something the snake can't go through.
-///
-/// It can either be a bonus, or a border.
-#[derive(Debug, Default, Component)]
-struct Collider;
-
-#[derive(Component, Debug, Eq, PartialEq, Copy, Clone)]
-enum BorderSet {
-    Screen,
-    Cross,
-    Horizontal,
-    Vertical,
-}
-
-impl fmt::Display for BorderSet {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl BorderSet {
-    fn iterator() -> impl Iterator<Item = Self> {
-        [
-            BorderSet::Screen,
-            BorderSet::Cross,
-            BorderSet::Horizontal,
-            BorderSet::Vertical,
-        ]
-        .into_iter()
-    }
-
-    fn get_borders(&self) -> Vec<Transform> {
-        match self {
-            BorderSet::Screen => vec![
-                Transform::default()
-                    .with_translation(Vec3 {
-                        y: MAX_SCREEN_HEIGHT,
-                        ..default()
-                    })
-                    .with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32)),
-                Transform::default()
-                    .with_translation(Vec3 {
-                        y: MIN_SCREEN_HEIGHT,
-                        ..default()
-                    })
-                    .with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32)),
-                Transform::default()
-                    .with_translation(Vec3 {
-                        x: MAX_SCREEN_WIDTH,
-                        ..default()
-                    })
-                    .with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32)),
-                Transform::default()
-                    .with_translation(Vec3 {
-                        x: MIN_SCREEN_WIDTH,
-                        ..default()
-                    })
-                    .with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32)),
-            ],
-            BorderSet::Horizontal => {
-                vec![Transform::default().with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32))]
-            }
-            BorderSet::Vertical => {
-                vec![Transform::default().with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32))]
-            }
-            BorderSet::Cross => vec![
-                Transform::default().with_scale(Vec3::new(BORDER_SIZE, SCREEN_HEIGHT, 0f32)),
-                Transform::default().with_scale(Vec3::new(SCREEN_WIDTH, BORDER_SIZE, 0f32)),
-            ],
-        }
-    }
-
-    fn compute_random_bonus_position(&self) -> Vec3 {
-        let mut rng = rand::thread_rng();
-        let bonus_dimensions = Vec2::splat(BONUS_DIAMETER);
-        'generator: loop {
-            let x = rng.gen_range(MIN_SCREEN_WIDTH..MAX_SCREEN_WIDTH);
-            let y = rng.gen_range(MIN_SCREEN_HEIGHT..MAX_SCREEN_HEIGHT);
-            let random_position = Vec3::new(x, y, 0f32);
-            for border in self.get_borders() {
-                let border_dimensions = Vec2::new(border.scale.x, border.scale.y);
-                if collide(
-                    border.translation,
-                    border_dimensions,
-                    random_position,
-                    bonus_dimensions,
-                )
-                .is_some()
-                {
-                    continue 'generator;
-                }
-            }
-            return random_position;
-        }
-    }
-
-    fn get_snake_initial_position(&self) -> Vec3 {
-        match self {
-            BorderSet::Screen => Vec3::default(),
-            _ => Vec3 {
-                x: -150f32,
-                y: 150f32,
-                ..default()
-            },
-        }
-    }
-
-    fn spawn_borders(
-        &self,
-        mut commands: Commands,
-        mut materials: ResMut<Assets<ColorMaterial>>,
-        mut meshes: ResMut<Assets<Mesh>>,
-    ) {
-        for border in self.get_borders() {
-            commands
-                .spawn()
-                .insert_bundle(MaterialMesh2dBundle {
-                    mesh: meshes
-                        .add(Mesh::from(shape::Quad {
-                            size: Vec2::splat(1f32),
-                            flip: false,
-                        }))
-                        .into(),
-                    transform: border,
-                    material: materials.add(ColorMaterial::from(Color::WHITE)),
-                    ..default()
-                })
-                .insert(Collider)
-                .insert(Border);
-        }
-        init_game_components(commands, materials, meshes, *self);
-    }
-}
 
 /// The event following a conflict of position between the snake and a collider.
 #[derive(Default)]
@@ -214,15 +24,6 @@ enum CollisionEvent {
     #[default]
     Border,
     Bonus(u32),
-}
-
-/// A bonus once collided with the snake will increase its size, and thus the
-/// player's score.
-#[derive(Component, Default, Clone, Copy, Debug)]
-enum Bonus {
-    #[default]
-    Normal,
-    ExtraBonus,
 }
 
 #[derive(Clone, Deref, DerefMut, Default)]
@@ -313,37 +114,23 @@ fn init_game_components(
 ) {
     let snake_initial_position = border_set.get_snake_initial_position();
     let bonus_initial_position = border_set.compute_random_bonus_position();
-    // The snake
-    commands
-        .spawn()
-        .insert(Snake::default())
-        .insert_bundle(MaterialMesh2dBundle {
-            mesh: meshes
-                .add(Mesh::from(shape::Quad {
-                    size: SNAKE_DIMENSIONS,
-                    ..default()
-                }))
-                .into(),
-            transform: Transform {
-                translation: snake_initial_position,
-                ..default()
-            },
-            material: materials.add(ColorMaterial::from(Color::WHITE)),
-            ..default()
-        });
+
+    // Spawn snake
+    Snake::default().spawn(
+        Transform::default().with_translation(snake_initial_position),
+        &mut commands,
+        &mut materials,
+        &mut meshes,
+    );
     // The first bonus
-    commands
-        .spawn()
-        .insert(Bonus::default())
-        .insert_bundle(MaterialMesh2dBundle {
-            mesh: meshes.add(Mesh::from(shape::Circle::default())).into(),
-            transform: Transform::default()
-                .with_scale(Vec3::splat(BONUS_DIAMETER))
-                .with_translation(bonus_initial_position),
-            material: materials.add(ColorMaterial::from(Color::WHITE)),
-            ..default()
-        })
-        .insert(Collider);
+    Bonus::default().spawn(
+        Transform::default()
+            .with_scale(Vec3::splat(BONUS_DIAMETER))
+            .with_translation(bonus_initial_position),
+        &mut commands,
+        &mut materials,
+        &mut meshes,
+    );
 }
 
 /// Resizes the window at startup.
@@ -390,7 +177,7 @@ fn update_score(
     app_font: Res<AppFont>,
     score: Res<Score>,
     mut query: Query<(&mut Text, &mut Style), With<UserText>>,
-    mut exit: EventWriter<AppExit>
+    mut exit: EventWriter<AppExit>,
 ) {
     let (mut text, mut style) = query.single_mut();
     if let Some(font) = &**app_font {
@@ -399,7 +186,6 @@ fn update_score(
     } else {
         eprintln!("Assets were not correctly loaded on startup");
         exit.send(AppExit);
-
     }
 }
 
@@ -520,25 +306,16 @@ fn collision_handler(
             CollisionEvent::Bonus(points) => {
                 for _ in 0..*points {
                     // spawn a queue
-                    commands
-                        .spawn()
-                        .insert(Queue)
-                        .insert_bundle(MaterialMesh2dBundle {
-                            mesh: meshes
-                                .add(Mesh::from(shape::Quad {
-                                    size: SNAKE_DIMENSIONS,
-                                    ..default()
-                                }))
-                                .into(),
-                            transform: Transform::default().with_translation(Vec3::new(
-                                MIN_SCREEN_WIDTH,
-                                MIN_SCREEN_HEIGHT,
-                                0f32,
-                            )),
-                            material: materials.add(ColorMaterial::from(Color::GRAY)),
-                            ..default()
-                        })
-                        .insert(Collider);
+                    Queue::default().spawn(
+                        Transform::default().with_translation(Vec3::new(
+                            SCREEN_WIDTH,
+                            SCREEN_HEIGHT,
+                            0f32,
+                        )),
+                        &mut commands,
+                        &mut materials,
+                        &mut meshes,
+                    );
                 }
                 score.0 += points;
                 let mut extra_bonus_exists: bool = false;
@@ -561,18 +338,14 @@ fn collision_handler(
                 let mut rng = rand::thread_rng();
                 if points == &1 && !extra_bonus_exists && rng.gen_bool(CHANCE_OF_EXTRA_BONUS) {
                     let extra_bonus_position = border_set.unwrap().compute_random_bonus_position();
-                    commands
-                        .spawn()
-                        .insert(Bonus::ExtraBonus)
-                        .insert_bundle(MaterialMesh2dBundle {
-                            mesh: meshes.add(Mesh::from(shape::Circle::default())).into(),
-                            transform: Transform::default()
-                                .with_scale(Vec3::splat(BONUS_DIAMETER))
-                                .with_translation(extra_bonus_position),
-                            material: materials.add(ColorMaterial::from(Color::YELLOW)),
-                            ..default()
-                        })
-                        .insert(Collider);
+                    Bonus::ExtraBonus.spawn(
+                        Transform::default()
+                            .with_scale(Vec3::splat(BONUS_DIAMETER))
+                            .with_translation(extra_bonus_position),
+                        &mut commands,
+                        &mut materials,
+                        &mut meshes,
+                    );
                 }
             }
             CollisionEvent::Border => {
