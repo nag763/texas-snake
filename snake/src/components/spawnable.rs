@@ -33,9 +33,9 @@ where
         materials: &mut ResMut<Assets<ColorMaterial>>,
         meshes: &mut ResMut<Assets<Mesh>>,
     ) {
-        let bundle: T = Self::get_bundle(&self, position, materials, meshes);
+        let bundle: T = Self::get_bundle(self, position, materials, meshes);
         let mut commands = commands.spawn();
-        commands.insert(self.clone()).insert_bundle(bundle);
+        commands.insert(*self).insert_bundle(bundle);
         Self::additional_systems(&mut commands);
     }
 
