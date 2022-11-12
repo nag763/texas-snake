@@ -46,7 +46,7 @@ impl Spawnable<MaterialMesh2dBundle<ColorMaterial>> for Bonus {
         }
     }
 
-    fn additional_systems(commands: &mut bevy::ecs::system::EntityCommands) {
+    fn additional_systems(&self, commands: &mut bevy::ecs::system::EntityCommands) {
         commands.insert(Collider);
     }
 }
