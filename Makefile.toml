@@ -36,7 +36,7 @@ dependencies = [
 workspace = false
 
 [tasks.build-styles]
-args = ["tailwindcss" ,"-i", "webapp/input.css", "--minifiy", "-o", "assets/tailwind.css", "-c", "webapp/tailwind.config.js"]
+args = ["tailwindcss" ,"-i", "webapp/input.css", "--minifiy", "-o", "webapp/assets/tailwind.css", "-c", "webapp/tailwind.config.js"]
 command = "npx"
 workspace = false
 
