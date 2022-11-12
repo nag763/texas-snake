@@ -7,7 +7,7 @@
 <h2 align="center">Texas Snake :snake:</h2>
 <h4 align="center">A blazingly fast WASM snake game built with Bevy, running on the browser</h4>
 
-<p align="center"><img src=""></img></p>
+<p align="center"><img src="https://raw.githubusercontent.com/nag763/texas-snake/main/.github/snake.gif"></img></p>
 
 ## TL;DR
 
@@ -82,4 +82,4 @@ This project is a tribute to this time, and also an excuse to learn how making g
 
 ## Feedback
 
-My goal behind this project was to first learn about bevy and in general how to make simple games in Rust. I must say bevy is a pretty easy to use (at least for 2D games) game engine and adding the comfort of developping in Rust to make games is a pretty cool thing. 
+My goal behind this project was to first learn about bevy and in general how to make simple games in Rust. I must say bevy is a pretty easy to use (at least for 2D games) game engine and adding the comfort of developping in Rust to make games is a pretty cool thing. x²
