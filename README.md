@@ -78,7 +78,7 @@ This project is a tribute to this time, and also an excuse to learn how making g
 
 ## In game logic schema
 
-
+![process](https://raw.githubusercontent.com/nag763/texas-snake/main/.github/process-graph.webp)
 
 ## Personnal objectives behind this project, feedback
 

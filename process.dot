@@ -74,5 +74,4 @@ digraph texas_snake_graph {
   "Check if resume has been requested" -> "Compute borders visibility";
     
   start [shape=Mdiamond];
-  end [shape=Msquare];
 }
