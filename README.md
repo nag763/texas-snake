@@ -19,7 +19,7 @@
 
 ## How to access the game
 
-The game is deployed on  and should be compatible with any modern navigator.
+The game is deployed on [here](https://nag763.github.io/texas-snake/) and should be compatible with any modern navigator.
 
 ## Long story, short story : another snake game ?
 
