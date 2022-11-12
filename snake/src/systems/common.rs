@@ -31,17 +31,18 @@ pub(crate) fn change_system_if_inputs_pressed(
 
 pub (crate) fn get_direction_from_input(
     keyboard_input: Res<Input<KeyCode>>) -> Option<SnakeDirection> {
+    let mut direction : Option<SnakeDirection> = None;
     if keyboard_input.any_pressed([KeyCode::Right, KeyCode::D]) {
-        return Some(SnakeDirection::Right);
+        direction = Some(SnakeDirection::Right);
     }
     if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Q]) {
-        return Some(SnakeDirection::Left);
+        direction = Some(SnakeDirection::Left);
     }
     if keyboard_input.any_pressed([KeyCode::Up, KeyCode::Z]) {
-        return Some(SnakeDirection::Up);
+        direction = Some(SnakeDirection::Up);
     }
     if keyboard_input.any_pressed([KeyCode::Down, KeyCode::S]) {
-        return Some(SnakeDirection::Down);
+        direction = Some(SnakeDirection::Down);
     }
-    None
+    direction
 }

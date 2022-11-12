@@ -55,9 +55,9 @@ fn main() {
         )
         .add_system_set(
             SystemSet::on_update(GameState::Running)
-                .with_system(enter_pause)
                 .with_system(check_collisions)
                 .with_system(handle_snake_direction_input)
+                .with_system(enter_pause.before(handle_snake_direction_input))
                 .with_system(extra_bonus_timeout.before(handle_snake_direction_input))
                 .with_system(move_snake.before(handle_snake_direction_input))
                 .with_system(move_queue.before(move_snake))

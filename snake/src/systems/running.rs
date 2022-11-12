@@ -101,7 +101,7 @@ pub fn extra_bonus_timeout(
 /// Enter in pause when the game is running.
 pub fn enter_pause(keyboard_input: ResMut<Input<KeyCode>>, game_state: ResMut<State<GameState>>) {
     change_system_if_inputs_pressed(
-        GameState::Ready,
+        GameState::Paused,
         vec![KeyCode::P, KeyCode::Space],
         keyboard_input,
         game_state,
