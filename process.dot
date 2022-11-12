@@ -1,0 +1,78 @@
+digraph texas_snake_graph {
+
+  subgraph cluster_0 {
+    style=filled;
+    color=antiquewhite;
+    node [style=filled,color=white];
+    "Spawn border set buttons" -> "Wait for user choice" -> "Wait for user choice" -> "Remove buttons"
+    label = "Initialized state";
+    "Wait for user choice" [shape=box]
+  }
+
+  subgraph cluster_1 {
+      style=filled;
+      color=antiquewhite1;
+      node [style=filled,color=white];
+      "Spawn borders" ->  "Spawn snake" -> "Spawn first bonus" -> "Wait for first user input" -> "Wait for first user input"
+      "Wait for first user input" [shape=box]
+      label = "Ready state"
+  }
+  
+  subgraph cluster_2 {
+      style=filled;
+      color=antiquewhite2;
+      node [style=filled,color=white];
+      "Compute borders visibility" 
+      -> "Check for collisions" 
+      -> "Lookup for snake direction change on user kbd" 
+      ->  "Check if a pause has been requested"
+      -> a0;
+      a0 -> "Timeout system if an extra bonus is present" [label="If no pause requested"];
+      "Timeout system if an extra bonus is present"
+      -> "Move the snake"
+      -> "Move its queue"
+      -> "Collision event handler listener"
+      -> a1;
+      a1 -> "Check for collisions" [label="If no border collision registered"];
+      a1 -> "Delete all playable entities" [label="If a border collision has been registered"];
+      a1 -> "Increase score" [label="A bonus has been collided"];
+      "Increase score" -> "Size up queue" -> "Spawn randomly a new bonus, and possibly an extra bonus"
+      "Spawn randomly a new bonus, and possibly an extra bonus" -> "Check for collisions"
+      "Delete all playable entities" -> "Reset score";
+      a0, a1 [label="", shape="diamond"]
+      "Check if a pause has been requested" [shape=box]
+      "Lookup for snake direction change on user kbd" [shape=box]
+      label= "Running state"
+  }
+  
+  subgraph cluster_3 {
+      style=filled;
+      color=antiquewhite3;
+      node [style=filled,color=white];
+      label= "Paused state"
+      "Check if resume has been requested"  -> "Check if resume has been requested"
+       "Check if resume has been requested"  [shape=box]
+  }
+  
+  subgraph cluster_4 {
+      style=filled;
+      color=antiquewhite4;
+      node [style=filled,color=white];
+      "Wait for user input" -> "Wait for user input" -> b0;
+      "Wait for user input"  [shape=box]
+      b0 [label="", shape="diamond"]
+      label = "Over state"
+  }
+
+  start -> "Init plugins" -> "Init resources" -> "Launch setup" -> "Load assets" -> "Resize the window" -> "Add the update text system" -> "Spawn border set buttons";
+  "Remove buttons" -> "Spawn borders"
+  "Wait for first user input" -> "Compute borders visibility"
+  a0 -> "Check if resume has been requested";
+  b0 -> "Spawn borders" [label="Game restart requested"];
+  b0 -> "Spawn border set buttons" [label="App restart requested"];
+  "Reset score" -> "Wait for user input"
+  "Check if resume has been requested" -> "Compute borders visibility";
+    
+  start [shape=Mdiamond];
+  end [shape=Msquare];
+}

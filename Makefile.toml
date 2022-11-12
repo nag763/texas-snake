@@ -46,3 +46,8 @@ dependencies = [
 	"build-styles"
 ]
 workspace = false
+
+[tasks.render-graph]
+args = ["-Twebp", "process.dot" ,"-o" ,".github/process-graph.webp"]
+command = "dot"
+workspace = false

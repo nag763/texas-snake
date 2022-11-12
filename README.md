@@ -1,5 +1,5 @@
 [![texas-snake-stars](https://img.shields.io/github/stars/nag763/texas-snake?style=social)](https://github.com/nag763/texas-snake/stargazers)
-[![tchatchers-license](https://img.shields.io/github/license/nag763/texas-snake)](https://raw.githubusercontent.com/nag763/texas-snake/main/LICENSE.MD)
+[![tchatchers-license](https://img.shields.io/github/license/nag763/texas-snake)](https://raw.githubusercontent.com/nag763/texas-snake/main/LICENSE.md)
 [![github-issues](https://img.shields.io/github/issues/nag763/texas-snake)](https://github.com/nag763/texas-snake/issues)
 
 <p align="center"><img height="300" src="https://raw.githubusercontent.com/nag763/texas-snake/main/webapp/favicon.ico"></img></p>
