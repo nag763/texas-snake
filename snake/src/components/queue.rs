@@ -6,7 +6,13 @@ use super::prelude::{Collider, Spawnable};
 
 /// The queue grows as long as the snake eats bonuses.
 #[derive(Debug, Component, Default, Copy, Clone)]
-pub struct Queue;
+pub enum Queue {
+    /// First queue component, isn't collidable
+    First,
+    /// Others queue members
+    #[default]
+    Other
+}
 
 impl Spawnable<MaterialMesh2dBundle<ColorMaterial>> for Queue {
     fn get_bundle(
@@ -28,7 +34,10 @@ impl Spawnable<MaterialMesh2dBundle<ColorMaterial>> for Queue {
         }
     }
 
-    fn additional_systems(commands: &mut bevy::ecs::system::EntityCommands) {
-        commands.insert(Collider);
+    fn additional_systems(&self, commands: &mut bevy::ecs::system::EntityCommands) {
+        match self {
+            Queue::First => {},
+            Queue::Other => {commands.insert(Collider);}
+        }
     }
 }

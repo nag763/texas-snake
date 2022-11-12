@@ -139,9 +139,13 @@ fn collision_handler(
             // others subsequent actions.
             CollisionEvent::Bonus(points) => {
                 for _ in 0..*points {
+                    let queue = match **score {
+                        0 => Queue::First,
+                        _ => Queue::Other
+                    };
                     // The queue is spawned out of the screen, and then moved
                     // by the systems.
-                    Queue::default().spawn(
+                    queue.spawn(
                         Transform::default().with_translation(Vec3::new(
                             SCREEN_WIDTH,
                             SCREEN_HEIGHT,

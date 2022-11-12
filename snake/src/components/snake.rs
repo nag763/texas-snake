@@ -91,5 +91,5 @@ impl Spawnable<MaterialMesh2dBundle<ColorMaterial>> for Snake {
             ..default()
         }
     }
-    fn additional_systems(_commands: &mut bevy::ecs::system::EntityCommands) {}
+    fn additional_systems(&self, _commands: &mut bevy::ecs::system::EntityCommands) {}
 }

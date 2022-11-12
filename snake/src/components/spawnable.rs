@@ -36,10 +36,10 @@ where
         let bundle: T = Self::get_bundle(self, position, materials, meshes);
         let mut commands = commands.spawn();
         commands.insert(*self).insert_bundle(bundle);
-        Self::additional_systems(&mut commands);
+        Self::additional_systems(self, &mut commands);
     }
 
     /// Additional systems, can be handful if for instance,
     /// there is a need to add another component to the bundle.
-    fn additional_systems(commands: &mut EntityCommands);
+    fn additional_systems(&self, commands: &mut EntityCommands);
 }
