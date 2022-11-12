@@ -36,7 +36,13 @@ dependencies = [
 workspace = false
 
 [tasks.build-styles]
-args = ["tailwindcss", "-o", "webapp/assets", "-c", "webapp/tailwind.config.js"]
+args = ["tailwindcss" ,"-i", "webapp/input.css", "--minifiy", "-o", "assets/tailwind.css", "-c", "webapp/tailwind.config.js"]
 command = "npx"
 workspace = false
 
+[tasks.build-webapp]
+dependencies = [
+	"prepare-snake",
+	"build-styles"
+]
+workspace = false
