@@ -12,11 +12,9 @@
 		<span class="sr-only">Loading...</span>
 	</div>
 			<script type="module">
-				fetch('./games/snake.js').then(() => {
-					document.getElementById('status').remove();
-					console.log('Game loaded with success!');
-				});
 				import init from './games/snake.js';
-				init();
+				init().catch((e) => {
+					document.getElementById('status').remove();
+				});
 			</script>
 </body>
