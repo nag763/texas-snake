@@ -1,0 +1,90 @@
+<html>
+
+<head>
+  <link rel="stylesheet" href="./assets/tailwind.css" />
+  <title>Snake game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body class="bg-black grid grid-cols-12 ">
+  <div class="col-span-auto xl:col-span-2 2xl:col-span-3"></div>
+  <div class="col-span-12 xl:col-span-8 2xl:col-span-6 grid grid-rows-5 sm:grid-rows-6">
+    <div class="row-span-1 flex flex-col space-y-3 pt-4 px-8 xl:px-0">
+      <h2 class="text-white text-2xl flex place-content-center font-bold">Snake game</h2>
+      <p class="text-white">The goal of this game is to have the longest queue possible ! By eating bonus, your length
+        will grow, by growing up, your score will as well. The longer you are, the more points you have. Be carefoul
+        though, the game will be more and more complicated given the snake length.</p>
+    </div>
+    <div class="row-span-3 flex place-items-center place-content-center px-8 sm:px-0">
+      <iframe class="hidden sm:block border-dashed border-2 border-gray-100" src="wasm_loader.html" height="485" width="645"></iframe>
+      <h2 class="sm:hidden text-white text-2xl flex place-content-center">This game is not available on this screen :(
+        Consider opening this page in a web browser on your computer in order to enjoy using this game.</h2>
+    </div>
+    <div class="hidden sm:block row-span-1 pt-4">
+      <h2 class="text-white text-2xl flex place-content-center">Commands</h2>
+      <div class="grid grid-cols-3 mt-3 gap-4 px-8 xl:px-0">
+        <span class="text-white">
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">Q</kbd>
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">&#8592;</kbd>
+          Move to the left </span>
+        <span class="text-white">
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">D</kbd>
+          <kbd class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">
+            &#8594;</kbd> Move to the right </span>
+        <span class="text-white">
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">Z</kbd>
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">&#8593;</kbd>
+          Move to the top </span>
+        <span class="text-white">
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">S</kbd>
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500 rotate-45">&#8595;</kbd>
+          Move to the bottom </span>
+        <span class="text-white">
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">P</kbd>
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">SPACE</kbd>
+          Pause/ Resume </span>
+        <span class="text-white">
+          <kbd
+            class="px-2 py-1.5 text-xs font-semibold border rounded-lg bg-gray-600 text-gray-100 border-gray-500">ESC</kbd>
+          Restart the application</span>
+      </div>
+    </div>
+    <div class="row-span-1 flex flex-col space-y-3">
+      <h2 class="text-white text-2xl flex place-content-center">Links</h2>
+      <div class="flex justify-center flex-row space-x-5">
+        <a href="https://github.com/nag763/texas-snake" class="flex flew-row text-white space-x-2">
+          <svg width="24px" height="24px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path fill="none" stroke="#FFF" stroke-width="2" d="M9,22 L15,2 M17,17 L22,12 L17,7 M7,17 L2,12 L7,7" />
+          </svg>
+          <span>Source code</span>
+        </a>
+        <a href="https://github.com/nag763/" class="flex flew-row text-white space-x-3">
+          <svg width="23px" height="24px" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1"
+            fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke="#FFF">
+            <path
+              d="m4.75 14.25s-.5-2 .5-3c0 0-2 0-3.5-1.5s-1-4.5 0-5.5c-.5-1.5.5-2.5.5-2.5s1.5 0 2.5 1c1-.5 3.5-.5 4.5 0 1-1 2.5-1 2.5-1s1 1 .5 2.5c1 1 1.5 4 0 5.5s-3.5 1.5-3.5 1.5c1 1 .5 3 .5 3" />
+            <path d="m4.25 13.75c-1.5.5-3-.5-3.5-1" />
+          </svg>
+          <span>My Github</span>
+        </a>
+        <a href="https://github.com/nag763/texas-snake/blob/main/LICENSE.md" class="flex flew-row text-white space-x-2">
+          <svg width="24px" height="24px" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#FFF"
+              d="M8,1 C8.55228,1 9,1.44769 9,2 C9,2.05821 9.04103,2.1082 9.09783,2.12092 C9.23039,2.15062 9.36095,2.18556 9.4893,2.22556 C9.54467,2.24281 9.60497,2.22009 9.63397,2.16986 C9.91013,1.69159 10.5217,1.52771 11,1.80383 C11.4783,2.07996 11.6422,2.69159 11.366,3.16986 C11.3366,3.22077 11.3472,3.2852 11.3904,3.32507 C11.489,3.41606 11.5839,3.51096 11.6749,3.60956 C11.7148,3.65275 11.7792,3.66335 11.8301,3.63397 C12.3084,3.35785 12.92,3.52173 13.1962,4 C13.4723,4.47827 13.3084,5.0899 12.8301,5.36603 C12.7799,5.39501 12.7572,5.4553 12.7744,5.51066 C12.8144,5.63902 12.8494,5.76962 12.8791,5.9022 C12.8918,5.95898 12.9418,6 13,6 C13.5523,6 14,6.44769 14,7 C14,7.55231 13.5523,8 13,8 C12.9418,8 12.8918,8.04102 12.8791,8.0978 C12.8712,8.13326 12.8629,8.16857 12.8542,8.20374 C12.8303,8.30006 12.8037,8.3953 12.7744,8.48934 C12.7572,8.5447 12.7799,8.60499 12.8301,8.63397 C13.3084,8.9101 13.4723,9.52173 13.1962,10 C12.92,10.4783 12.3084,10.6422 11.8301,10.366 L11.7795,10.3368 C11.7581,10.3244 11.7309,10.3289 11.7144,10.3472 C11.6991,10.3641 11.6964,10.3888 11.7078,10.4085 L14.07,14.5 L12.271,14.384 L11.4719,16 L9.11587,11.9192 C9.10244,11.8959 9.0755,11.8841 9.04923,11.8897 C9.02063,11.8958 9,11.921 9,11.9502 L9,12 C9,12.5523 8.55228,13 8,13 C7.44772,13 7,12.5523 7,12 L7,11.9502 C7,11.921 6.97937,11.8958 6.95077,11.8897 C6.9245,11.8841 6.89756,11.8959 6.88413,11.9192 L4.52807,16 L3.72903,14.384 L1.92999,14.5 L4.29222,10.4085 C4.30358,10.3888 4.30085,10.3641 4.28564,10.3472 C4.26908,10.3289 4.24195,10.3244 4.22053,10.3368 L4.16989,10.366 C3.69159,10.6422 3.08002,10.4783 2.80386,10 C2.52771,9.52173 2.69159,8.9101 3.16989,8.63397 C3.2201,8.60499 3.24282,8.54472 3.22557,8.48937 C3.18557,8.361 3.1506,8.23039 3.12089,8.0978 C3.10817,8.04102 3.05819,8 3,8 C2.44772,8 2,7.55231 2,7 C2,6.44769 2.44772,6 3,6 C3.05819,6 3.10817,5.95898 3.12089,5.9022 C3.1506,5.76961 3.18557,5.639 3.22557,5.51063 C3.24282,5.45528 3.2201,5.39501 3.16989,5.36603 C2.69159,5.0899 2.52771,4.47827 2.80386,4 C3.08002,3.52173 3.69159,3.35785 4.16989,3.63397 C4.22078,3.66335 4.28519,3.65276 4.32505,3.60958 C4.41608,3.51095 4.51103,3.41599 4.60965,3.32496 C4.65282,3.28512 4.66341,3.22073 4.63403,3.16986 C4.35791,2.69159 4.52176,2.08002 5.00006,1.80383 C5.47836,1.52771 6.08994,1.69159 6.36609,2.16986 C6.39507,2.22009 6.45536,2.24282 6.51072,2.22558 C6.63906,2.1856 6.76963,2.15064 6.90217,2.12093 C6.95897,2.1082 7,2.05821 7,2 C7,1.44769 7.44772,1 8,1 Z M8,4 C6.34314,4 5,5.34314 5,7 C5,8.65686 6.34314,10 8,10 C9.65686,10 11,8.65686 11,7 C11,5.34314 9.65686,4 8,4 Z M8,6 C8.55229,6 9,6.44772 9,7 C9,7.55228 8.55229,8 8,8 C7.44772,8 7,7.55228 7,7 C7,6.44772 7.44772,6 8,6 Z" />
+          </svg>
+          <span>License</span>
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="col-span-auto xl:col-span-2 2xl:col-span-3"></div>
+</body>
