@@ -18,7 +18,7 @@ pub const SNAKE_SIZE: f32 = 10f32;
 /// The snake dimensions
 pub const SNAKE_DIMENSIONS: Vec2 = Vec2::splat(SNAKE_SIZE);
 /// The snake speed
-pub const SNAKE_SPEED_FACTOR: f32 = 4.5f32;
+pub const SNAKE_SPEED_FACTOR: f32 = 270f32;
 
 /// The bonus diameter
 pub const BONUS_DIAMETER: f32 = 10f32;
