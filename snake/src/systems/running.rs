@@ -10,7 +10,7 @@ use crate::{
 use super::prelude::{change_system_if_inputs_pressed, get_direction_from_input};
 
 /// The movement of snake per TIME_STEP applied to the ball.
-pub fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>, mut time: ResMut<Time>) {
+pub fn move_snake(mut query: Query<(&mut Transform, &mut Snake)>, time: Res<Time>) {
     let (mut transform, mut snake) = query.single_mut();
     if let Some(direction) = snake.direction {
         let translation_diff = direction.into_translation() * SNAKE_SPEED_FACTOR * time.delta_seconds();
